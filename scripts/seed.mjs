@@ -423,6 +423,201 @@ const dosingRules = [
     durationDays: { min: 3, max: 5 },
     notes: 'Reptiles often need higher dose; repeat course in 2 weeks for nematodes.',
   }),
+
+  // ---- WATERFOWL group coverage ----
+  rule('meloxicam', { type: 'group', value: 'waterfowl' }, {
+    mgPerKg: { min: 0.5, max: 1.0, typical: 0.5 },
+    route: 'PO',
+    frequency: 'q24h',
+    durationDays: { min: 1, max: 5 },
+    contraindications: ['Dehydration', 'Renal compromise'],
+    notes: 'Hydrate well before NSAID dosing.',
+  }),
+  rule('carprofen', { type: 'group', value: 'waterfowl' }, {
+    mgPerKg: { min: 1, max: 4, typical: 2 },
+    route: 'IM',
+    frequency: 'q24h',
+    durationDays: { min: 1, max: 3 },
+    contraindications: ['Dehydration', 'Renal compromise'],
+  }),
+  rule('enrofloxacin', { type: 'group', value: 'waterfowl' }, {
+    mgPerKg: { min: 15, max: 20, typical: 15 },
+    route: 'PO',
+    frequency: 'q12h',
+    durationDays: { min: 7, max: 14 },
+    contraindications: ['Juvenile/growing birds (cartilage)'],
+  }),
+  rule('metronidazole', { type: 'group', value: 'waterfowl' }, {
+    mgPerKg: { min: 20, max: 50, typical: 30 },
+    route: 'PO',
+    frequency: 'q12h',
+    durationDays: { min: 5, max: 10 },
+    contraindications: ['Hepatic disease'],
+  }),
+  rule('itraconazole', { type: 'group', value: 'waterfowl' }, {
+    mgPerKg: { min: 5, max: 10, typical: 10 },
+    route: 'PO',
+    frequency: 'q12h',
+    durationDays: { min: 14, max: 60 },
+    contraindications: ['Hepatic disease'],
+    notes: 'Aspergillosis treatment course in ducks/geese; monitor LFTs on long courses.',
+  }),
+  rule('fenbendazole', { type: 'group', value: 'waterfowl' }, {
+    mgPerKg: { min: 20, max: 50, typical: 25 },
+    route: 'PO',
+    frequency: 'q24h',
+    durationDays: { min: 3, max: 5 },
+  }),
+
+  // ---- WADING-BIRD group coverage ----
+  rule('meloxicam', { type: 'group', value: 'wadingBird' }, {
+    mgPerKg: { min: 0.5, max: 1.0, typical: 0.5 },
+    route: 'PO',
+    frequency: 'q24h',
+    durationDays: { min: 1, max: 5 },
+    contraindications: ['Dehydration', 'Renal compromise'],
+  }),
+  rule('carprofen', { type: 'group', value: 'wadingBird' }, {
+    mgPerKg: { min: 1, max: 3, typical: 2 },
+    route: 'IM',
+    frequency: 'q24h',
+    durationDays: { min: 1, max: 3 },
+    contraindications: ['Dehydration', 'Renal compromise'],
+  }),
+  rule('enrofloxacin', { type: 'group', value: 'wadingBird' }, {
+    mgPerKg: { min: 15, max: 20, typical: 15 },
+    route: 'PO',
+    frequency: 'q12h',
+    durationDays: { min: 7, max: 14 },
+    contraindications: ['Juvenile/growing birds'],
+  }),
+  rule('itraconazole', { type: 'group', value: 'wadingBird' }, {
+    mgPerKg: { min: 5, max: 10, typical: 10 },
+    route: 'PO',
+    frequency: 'q12h',
+    durationDays: { min: 14, max: 60 },
+    contraindications: ['Hepatic disease'],
+  }),
+  rule('fenbendazole', { type: 'group', value: 'wadingBird' }, {
+    mgPerKg: { min: 20, max: 50, typical: 25 },
+    route: 'PO',
+    frequency: 'q24h',
+    durationDays: { min: 3, max: 5 },
+  }),
+
+  // ---- MEDIUM-MAMMAL group coverage (opossums, raccoons) ----
+  rule('meloxicam', { type: 'group', value: 'mediumMammal' }, {
+    mgPerKg: { min: 0.1, max: 0.3, typical: 0.2 },
+    route: 'PO',
+    frequency: 'q24h',
+    durationDays: { min: 1, max: 5 },
+    contraindications: ['Dehydration', 'Renal compromise', 'GI ulceration'],
+    notes: 'Lower mg/kg than small mammals — allometric scaling.',
+  }),
+  rule('carprofen', { type: 'group', value: 'mediumMammal' }, {
+    mgPerKg: { min: 2, max: 4, typical: 2 },
+    route: 'PO',
+    frequency: 'q12h',
+    durationDays: { min: 1, max: 3 },
+    contraindications: ['Dehydration', 'Renal compromise'],
+  }),
+  rule('buprenorphine', { type: 'group', value: 'mediumMammal' }, {
+    mgPerKg: { min: 0.01, max: 0.03, typical: 0.02 },
+    route: 'SC',
+    frequency: 'q8-12h',
+    contraindications: ['Respiratory depression'],
+  }),
+  rule('enrofloxacin', { type: 'group', value: 'mediumMammal' }, {
+    mgPerKg: { min: 5, max: 15, typical: 10 },
+    route: 'PO',
+    frequency: 'q12h',
+    durationDays: { min: 7, max: 14 },
+    contraindications: ['Juveniles (cartilage)', 'Severe dehydration'],
+    notes: 'Use the low end in raccoons; some references cite hypersensitivity reactions.',
+  }),
+  rule('amoxicillin-clavulanate', { type: 'group', value: 'mediumMammal' }, {
+    mgPerKg: { min: 12.5, max: 22, typical: 15 },
+    route: 'PO',
+    frequency: 'q12h',
+    durationDays: { min: 7, max: 14 },
+    contraindications: ['Concurrent severe diarrhea'],
+    notes: 'Opossums and raccoons tolerate beta-lactams well; carnivore-dosing schedules apply.',
+  }),
+  rule('metronidazole', { type: 'group', value: 'mediumMammal' }, {
+    mgPerKg: { min: 10, max: 25, typical: 15 },
+    route: 'PO',
+    frequency: 'q12h',
+    durationDays: { min: 5, max: 10 },
+    contraindications: ['Hepatic disease'],
+  }),
+  rule('fenbendazole', { type: 'group', value: 'mediumMammal' }, {
+    mgPerKg: { min: 20, max: 50, typical: 50 },
+    route: 'PO',
+    frequency: 'q24h',
+    durationDays: { min: 3, max: 5 },
+  }),
+
+  // ---- SONGBIRD additions ----
+  rule('carprofen', { type: 'group', value: 'songbird' }, {
+    mgPerKg: { min: 1, max: 4, typical: 2 },
+    route: 'IM',
+    frequency: 'q12h',
+    durationDays: { min: 1, max: 3 },
+    contraindications: ['Dehydration', 'Renal compromise'],
+  }),
+  rule('itraconazole', { type: 'group', value: 'songbird' }, {
+    mgPerKg: { min: 5, max: 10, typical: 5 },
+    route: 'PO',
+    frequency: 'q24h',
+    durationDays: { min: 14, max: 30 },
+    contraindications: ['Hepatic disease'],
+    notes: 'Aspergillosis prophylaxis or treatment in passerines.',
+  }),
+  rule('metronidazole', { type: 'group', value: 'songbird' }, {
+    mgPerKg: { min: 20, max: 50, typical: 25 },
+    route: 'PO',
+    frequency: 'q12h',
+    durationDays: { min: 5, max: 10 },
+    contraindications: ['Hepatic disease'],
+  }),
+  rule('fenbendazole', { type: 'group', value: 'songbird' }, {
+    mgPerKg: { min: 20, max: 50, typical: 25 },
+    route: 'PO',
+    frequency: 'q24h',
+    durationDays: { min: 3, max: 5 },
+  }),
+
+  // ---- REPTILE additions ----
+  rule('meloxicam', { type: 'group', value: 'reptile' }, {
+    mgPerKg: { min: 0.1, max: 0.5, typical: 0.2 },
+    route: 'PO',
+    frequency: 'q24-48h',
+    durationDays: { min: 1, max: 5 },
+    contraindications: ['Dehydration', 'Renal compromise'],
+    notes: 'Lower frequency than mammals/birds — slower reptile metabolism.',
+  }),
+  rule('enrofloxacin', { type: 'group', value: 'reptile' }, {
+    mgPerKg: { min: 5, max: 10, typical: 10 },
+    route: 'PO',
+    frequency: 'q24-48h',
+    durationDays: { min: 7, max: 14 },
+    contraindications: ['Severe dehydration'],
+    notes: 'Most reptiles tolerate q48h; small lizards may need q24h.',
+  }),
+  rule('metronidazole', { type: 'group', value: 'reptile' }, {
+    mgPerKg: { min: 20, max: 50, typical: 25 },
+    route: 'PO',
+    frequency: 'q24-48h',
+    durationDays: { min: 5, max: 10 },
+    contraindications: ['Hepatic disease', 'Snakes (some species sensitive — start low)'],
+  }),
+  rule('buprenorphine', { type: 'group', value: 'reptile' }, {
+    mgPerKg: { min: 0.02, max: 0.2, typical: 0.05 },
+    route: 'IM',
+    frequency: 'q24-48h',
+    contraindications: ['Respiratory depression'],
+    notes: 'Reptile opioid response is highly variable by species; consider mu-agonists as alternative.',
+  }),
 ];
 
 // ---------- WRITE ----------
