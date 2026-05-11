@@ -117,15 +117,28 @@ export function RulesTab() {
           {/* Target */}
           <div>
             <div className={sectionEyebrowCls}>Target</div>
-            <TypeaheadSelect
-              options={targetOptions}
-              onSelect={setTargetFromOption}
-              placeholder="Type to search group or species…"
-              requireQuery
-            />
-            <div className="mt-2 text-[13px] text-ink2 italic">
-              Current: {describeTarget(editing.target)}
-            </div>
+            {editing.id ? (
+              <>
+                <div className="text-[15px] text-ink font-medium">
+                  {describeTarget(editing.target)}
+                </div>
+                <div className="mt-1 text-[12px] italic text-ink2">
+                  Target is fixed once a rule is created. To target a different group or species, delete this rule and add a new one.
+                </div>
+              </>
+            ) : (
+              <>
+                <TypeaheadSelect
+                  options={targetOptions}
+                  onSelect={setTargetFromOption}
+                  placeholder="Type to search group or species…"
+                  previewCount={6}
+                />
+                <div className="mt-2 text-[13px] text-ink2 italic">
+                  Current: {describeTarget(editing.target)}
+                </div>
+              </>
+            )}
           </div>
 
           {/* Dosing */}

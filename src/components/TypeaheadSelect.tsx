@@ -15,11 +15,12 @@ interface Props {
   placeholder?: string;
   initialQuery?: string;
   /**
-   * When true, the result list stays hidden until the user types something.
-   * Useful when the option list is long and the user knows what they want
-   * (e.g. admin rule target picker). Default false (browse mode).
+   * How many options to render when the query is empty.
+   * - undefined (default): show all options (browse mode).
+   * - 0: show none.
+   * - N: show first N options as a preview.
    */
-  requireQuery?: boolean;
+  previewCount?: number;
 }
 
 function badgeClasses(badge: string): string {
@@ -29,7 +30,7 @@ function badgeClasses(badge: string): string {
   return 'bg-cream text-ink2';
 }
 
-export function TypeaheadSelect({ options, onSelect, placeholder, initialQuery = '', requireQuery = false }: Props) {
+export function TypeaheadSelect({ options, onSelect, placeholder, initialQuery = '', previewCount }: Props) {
   const [q, setQ] = useState(initialQuery);
   const [active, setActive] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -41,11 +42,15 @@ export function TypeaheadSelect({ options, onSelect, placeholder, initialQuery =
   const queryIsEmpty = q.trim() === '';
   const results = useMemo(
     () => {
-      if (queryIsEmpty) return requireQuery ? [] : options;
+      if (queryIsEmpty) {
+        if (previewCount === undefined) return options;
+        return options.slice(0, previewCount);
+      }
       return fuse.search(q).map(r => r.item);
     },
-    [q, queryIsEmpty, options, fuse, requireQuery]
+    [q, queryIsEmpty, options, fuse, previewCount]
   );
+  const showPreviewHint = queryIsEmpty && previewCount !== undefined && previewCount < options.length;
 
   useEffect(() => { setActive(0); }, [q]);
 
@@ -95,6 +100,11 @@ export function TypeaheadSelect({ options, onSelect, placeholder, initialQuery =
             </li>
           );
         })}
+        {showPreviewHint && (
+          <li className="px-4 py-3 text-[12px] italic text-ink2 text-center">
+            Type to see more
+          </li>
+        )}
       </ul>
     </div>
   );
