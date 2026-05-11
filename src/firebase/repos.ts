@@ -17,3 +17,29 @@ export async function listDosingRulesForMed(medId: string): Promise<DosingRule[]
   const snap = await getDocs(q);
   return snap.docs.map(d => ({ id: d.id, ...(d.data() as Omit<DosingRule, 'id'>) }));
 }
+
+import { doc, setDoc, deleteDoc } from 'firebase/firestore';
+
+function stripId<T extends { id: string }>(o: T): Omit<T, 'id'> {
+  const { id: _ignored, ...rest } = o;
+  return rest;
+}
+
+export async function upsertMedication(m: Medication) {
+  await setDoc(doc(db, 'medications', m.id), stripId(m));
+}
+export async function deleteMedication(id: string) {
+  await deleteDoc(doc(db, 'medications', id));
+}
+export async function upsertSpecies(s: Species) {
+  await setDoc(doc(db, 'species', s.id), stripId(s));
+}
+export async function deleteSpecies(id: string) {
+  await deleteDoc(doc(db, 'species', id));
+}
+export async function upsertDosingRule(r: DosingRule) {
+  await setDoc(doc(db, 'dosingRules', r.id), stripId(r));
+}
+export async function deleteDosingRule(id: string) {
+  await deleteDoc(doc(db, 'dosingRules', id));
+}
