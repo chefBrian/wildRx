@@ -105,56 +105,10 @@ export function RulesTab() {
 
   const preview = editing ? calculateDose({ weightGrams: sampleWeight, rule: editing }) : null;
 
-  return (
-    <div className="space-y-5">
-      <div>
-        <label htmlFor="rule-med" className={eyebrowCls}>Medication</label>
-        <select id="rule-med" className={inputCls} value={medId} onChange={e => setMedId(e.target.value)}>
-          <option value="">— select —</option>
-          {meds.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-        </select>
-      </div>
-
-      {medId && (
-        <>
-          <div className="flex justify-end">
-            <button
-              type="button"
-              disabled={!user}
-              onClick={() => user && setEditing(blank(medId, user.uid))}
-              className="bg-moss-600 text-paper font-display font-semibold text-[14px] uppercase tracking-[0.08em] h-11 px-5 rounded-md hover:bg-moss-700 disabled:opacity-50 transition-colors"
-            >
-              + Add rule
-            </button>
-          </div>
-
-          <ul className="space-y-2">
-            {rules.map(r => (
-              <li key={r.id} className="bg-surface border border-taupe rounded-md p-4 flex items-center justify-between gap-4">
-                <div className="min-w-0">
-                  <div className="font-display text-[16px] text-ink leading-tight" style={{ fontVariationSettings: '"opsz" 24' }}>
-                    {describeTarget(r.target)}
-                  </div>
-                  <div className="text-[13px] text-ink2 mt-1 flex items-center gap-2 flex-wrap">
-                    <span className="tabular-nums">{r.mgPerKg.typical} mg/kg</span>
-                    <span className="text-taupe2">·</span>
-                    <span className="font-mono text-ink">{r.route}</span>
-                    <span className="text-taupe2">·</span>
-                    <span>{r.frequency}</span>
-                  </div>
-                </div>
-                <div className="flex gap-4 shrink-0">
-                  <button type="button" onClick={() => setEditing(r)} className="text-[12px] uppercase tracking-[0.1em] text-moss-700 underline underline-offset-4 decoration-1">Edit</button>
-                  <button type="button" onClick={() => del(r.id)} className="text-[12px] uppercase tracking-[0.1em] text-clay-700 underline underline-offset-4 decoration-1">Delete</button>
-                </div>
-              </li>
-            ))}
-          </ul>
-        </>
-      )}
-
-      {editing && (
-        <div className="bg-surface border border-taupe rounded-md p-5 space-y-5">
+  function editPanel() {
+    if (!editing) return null;
+    return (
+      <div className="bg-surface border border-taupe rounded-md p-5 space-y-5">
           <div className="text-[11px] uppercase tracking-[0.14em] text-ink2">
             {editing.id ? 'Edit rule' : 'New rule'}
           </div>
@@ -268,6 +222,65 @@ export function RulesTab() {
             </button>
           </div>
         </div>
+    );
+  }
+
+  const isNew = editing !== null && !editing.id;
+
+  return (
+    <div className="space-y-5">
+      <div>
+        <label htmlFor="rule-med" className={eyebrowCls}>Medication</label>
+        <select id="rule-med" className={inputCls} value={medId} onChange={e => setMedId(e.target.value)}>
+          <option value="">— select —</option>
+          {meds.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+        </select>
+      </div>
+
+      {medId && (
+        <>
+          <div className="flex justify-end">
+            <button
+              type="button"
+              disabled={!user}
+              onClick={() => user && setEditing(blank(medId, user.uid))}
+              className="bg-moss-600 text-paper font-display font-semibold text-[14px] uppercase tracking-[0.08em] h-11 px-5 rounded-md hover:bg-moss-700 disabled:opacity-50 transition-colors"
+            >
+              + Add rule
+            </button>
+          </div>
+
+          {isNew && editPanel()}
+
+          <ul className="space-y-2">
+            {rules.map(r => {
+              const isEditingThis = editing !== null && editing.id === r.id;
+              if (isEditingThis) {
+                return <li key={r.id}>{editPanel()}</li>;
+              }
+              return (
+                <li key={r.id} className="bg-surface border border-taupe rounded-md p-4 flex items-center justify-between gap-4">
+                  <div className="min-w-0">
+                    <div className="font-display text-[16px] text-ink leading-tight" style={{ fontVariationSettings: '"opsz" 24' }}>
+                      {describeTarget(r.target)}
+                    </div>
+                    <div className="text-[13px] text-ink2 mt-1 flex items-center gap-2 flex-wrap">
+                      <span className="tabular-nums">{r.mgPerKg.typical} mg/kg</span>
+                      <span className="text-taupe2">·</span>
+                      <span className="font-mono text-ink">{r.route}</span>
+                      <span className="text-taupe2">·</span>
+                      <span>{r.frequency}</span>
+                    </div>
+                  </div>
+                  <div className="flex gap-4 shrink-0">
+                    <button type="button" onClick={() => setEditing(r)} className="text-[12px] uppercase tracking-[0.1em] text-moss-700 underline underline-offset-4 decoration-1">Edit</button>
+                    <button type="button" onClick={() => del(r.id)} className="text-[12px] uppercase tracking-[0.1em] text-clay-700 underline underline-offset-4 decoration-1">Delete</button>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </>
       )}
     </div>
   );
