@@ -31,6 +31,7 @@
     "eslint": "^10.3.0",
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.2",
+    "firebase-admin": "^13.9.0",
     "globals": "^17.6.0",
     "happy-dom": "^20.9.0",
     "postcss": "^8.5.14",
