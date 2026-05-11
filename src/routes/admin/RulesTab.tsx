@@ -4,7 +4,10 @@ import {
   upsertDosingRule, deleteDosingRule,
 } from '../../firebase/repos';
 import { TypeaheadSelect, type TypeaheadOption } from '../../components/TypeaheadSelect';
+import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { calculateDose } from '../../domain/dose';
+import { formatNumber } from '../../domain/format';
+import { FREQUENCY_OPTIONS, isCanonicalFrequency } from '../../domain/frequency';
 import { useAuth } from '../../auth/AuthProvider';
 import {
   formatGroup,
@@ -48,6 +51,12 @@ export function RulesTab() {
   const [editing, setEditing] = useState<DosingRule | null>(null);
   const [sampleWeight, setSampleWeight] = useState(1000);
   const [pickingTarget, setPickingTarget] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<DosingRule | null>(null);
+  // freqMode is derived: an empty or non-canonical token = custom; otherwise preset.
+  const freqMode: 'preset' | 'custom' =
+    editing && editing.frequency && isCanonicalFrequency(editing.frequency)
+      ? 'preset'
+      : 'custom';
 
   useEffect(() => {
     listMedications().then(setMeds);
@@ -93,11 +102,11 @@ export function RulesTab() {
     if (medId) setRules(await listDosingRulesForMed(medId));
   }
 
-  async function del(id: string) {
-    if (confirm('Delete rule?')) {
-      await deleteDosingRule(id);
-      if (medId) setRules(await listDosingRulesForMed(medId));
-    }
+  async function confirmDelete() {
+    if (!pendingDelete) return;
+    await deleteDosingRule(pendingDelete.id);
+    setPendingDelete(null);
+    if (medId) setRules(await listDosingRulesForMed(medId));
   }
 
   function describeTarget(t: RuleTarget): string {
@@ -107,6 +116,28 @@ export function RulesTab() {
   }
 
   const preview = editing ? calculateDose({ weightGrams: sampleWeight, rule: editing }) : null;
+
+  function livePreview() {
+    if (!editing || !preview) return null;
+    return (
+      <div className="bg-moss-50 rounded-md p-4">
+        <div className="text-[11px] uppercase tracking-[0.14em] text-moss-700 mb-2">Live preview</div>
+        <label className="text-[13px] text-ink2 flex items-center gap-2">
+          Sample weight (g)
+          <input type="number" className="w-28 h-9 rounded-md border border-taupe bg-paper px-3 text-[14px] tabular-nums text-ink focus:border-moss-600 focus:outline-none transition-colors"
+            value={sampleWeight}
+            onChange={e => setSampleWeight(Number(e.target.value))} />
+        </label>
+        <div className="mt-3 text-[14px] text-ink">
+          Dose: <strong className="font-display tabular-nums text-[18px]" style={{ fontVariationSettings: '"opsz" 24' }}>
+            {formatNumber(preview.doseMg.typical)} mg
+          </strong>
+          <span className="text-ink2 ml-2">(range {formatNumber(preview.doseMg.min)}–{formatNumber(preview.doseMg.max)})</span>
+          {preview.cappedByMaxDose && <span className="ml-2 text-ember-700 uppercase tracking-[0.08em] text-[11px] font-medium">Capped</span>}
+        </div>
+      </div>
+    );
+  }
 
   function editPanel() {
     if (!editing) return null;
@@ -143,7 +174,7 @@ export function RulesTab() {
                 <button
                   type="button"
                   onClick={() => setPickingTarget(true)}
-                  className="text-[12px] uppercase tracking-[0.1em] text-moss-700 underline underline-offset-4 decoration-1 shrink-0"
+                  className="min-h-[44px] inline-flex items-center text-[12px] uppercase tracking-[0.1em] text-moss-700 underline underline-offset-4 decoration-1 shrink-0"
                 >
                   Change
                 </button>
@@ -176,6 +207,9 @@ export function RulesTab() {
             </div>
           </div>
 
+          {/* Live preview – placed next to dosing so admins see the effect as they type. */}
+          {livePreview()}
+
           {/* Schedule */}
           <div>
             <div className={sectionEyebrowCls}>Schedule</div>
@@ -189,8 +223,42 @@ export function RulesTab() {
               </div>
               <div>
                 <label htmlFor="r-freq" className={eyebrowCls}>Frequency</label>
-                <input id="r-freq" type="text" className={inputCls} value={editing.frequency}
-                  onChange={e => setEditing({ ...editing, frequency: e.target.value })} />
+                {freqMode === 'preset' ? (
+                  <select
+                    id="r-freq"
+                    className={inputCls}
+                    value={isCanonicalFrequency(editing.frequency) ? editing.frequency.toLowerCase() : 'q24h'}
+                    onChange={e => {
+                      const v = e.target.value;
+                      // Choosing "Custom…" clears the token so the text-input
+                      // branch renders; the admin then types their own.
+                      setEditing({ ...editing, frequency: v === '__custom__' ? '' : v });
+                    }}
+                  >
+                    {FREQUENCY_OPTIONS.map(o => (
+                      <option key={o.token} value={o.token}>{o.token} — {o.plain}</option>
+                    ))}
+                    <option value="__custom__">Custom…</option>
+                  </select>
+                ) : (
+                  <div className="flex gap-2">
+                    <input
+                      id="r-freq"
+                      type="text"
+                      className={inputCls + ' flex-1'}
+                      placeholder="e.g. q6-12h"
+                      value={editing.frequency}
+                      onChange={e => setEditing({ ...editing, frequency: e.target.value })}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setEditing({ ...editing, frequency: 'q24h' })}
+                      className="min-h-[44px] text-[12px] uppercase tracking-[0.1em] text-moss-700 underline underline-offset-4 decoration-1 shrink-0"
+                    >
+                      Preset
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -216,33 +284,13 @@ export function RulesTab() {
               onChange={e => setEditing({ ...editing, notes: e.target.value })} />
           </div>
 
-          {/* Live preview */}
-          <div className="bg-moss-50 rounded-md p-4">
-            <div className="text-[11px] uppercase tracking-[0.14em] text-moss-700 mb-2">Live preview</div>
-            <label className="text-[13px] text-ink2 flex items-center gap-2">
-              Sample weight (g)
-              <input type="number" className="w-28 h-9 rounded-md border border-taupe bg-paper px-3 text-[14px] tabular-nums text-ink focus:border-moss-600 focus:outline-none transition-colors"
-                value={sampleWeight}
-                onChange={e => setSampleWeight(Number(e.target.value))} />
-            </label>
-            {preview && (
-              <div className="mt-3 text-[14px] text-ink">
-                Dose: <strong className="font-display tabular-nums text-[18px]" style={{ fontVariationSettings: '"opsz" 24' }}>
-                  {preview.doseMg.typical.toFixed(2)} mg
-                </strong>
-                <span className="text-ink2 ml-2">(range {preview.doseMg.min.toFixed(2)}–{preview.doseMg.max.toFixed(2)})</span>
-                {preview.cappedByMaxDose && <span className="ml-2 text-ember-700 uppercase tracking-[0.08em] text-[11px] font-medium">▲ Capped</span>}
-              </div>
-            )}
-          </div>
-
           <div className="flex gap-2 pt-2">
             <button type="button" onClick={save}
-              className="bg-moss-600 text-paper font-display font-semibold text-[14px] uppercase tracking-[0.08em] h-10 px-5 rounded-md hover:bg-moss-700 transition-colors">
+              className="bg-moss-600 text-paper font-display font-semibold text-[14px] uppercase tracking-[0.08em] h-11 px-5 rounded-md hover:bg-moss-700 transition-colors">
               Save
             </button>
             <button type="button" onClick={() => setEditing(null)}
-              className="bg-surface text-ink2 border border-taupe font-sans text-[14px] h-10 px-5 rounded-md hover:bg-cream/50 transition-colors">
+              className="bg-surface text-ink2 border border-taupe font-sans text-[14px] h-11 px-5 rounded-md hover:bg-cream/50 transition-colors">
               Cancel
             </button>
           </div>
@@ -281,29 +329,38 @@ export function RulesTab() {
 
           {isNew && editPanel()}
 
+          {rules.length === 0 && !isNew && (
+            <div className="bg-cream/60 border border-taupe/60 rounded-md px-5 py-8 text-center text-[14px] text-ink2">
+              No rules yet for this medication. Tap <span className="text-ink font-medium">+ Add rule</span> to create the first one.
+            </div>
+          )}
+
           <ul className="space-y-2">
             {rules.map(r => {
               const isEditingThis = editing !== null && editing.id === r.id;
               if (isEditingThis) {
                 return <li key={r.id}>{editPanel()}</li>;
               }
+              const rangeLabel = r.mgPerKg.min === r.mgPerKg.max
+                ? `${formatNumber(r.mgPerKg.typical)} mg/kg`
+                : `${formatNumber(r.mgPerKg.min)}–${formatNumber(r.mgPerKg.max)} mg/kg (typ ${formatNumber(r.mgPerKg.typical)})`;
               return (
-                <li key={r.id} className="bg-surface border border-taupe rounded-md p-4 flex items-center justify-between gap-4">
+                <li key={r.id} className="bg-surface border border-taupe rounded-md p-4 flex items-center justify-between gap-6">
                   <div className="min-w-0">
                     <div className="font-display text-[16px] text-ink leading-tight" style={{ fontVariationSettings: '"opsz" 24' }}>
                       {describeTarget(r.target)}
                     </div>
                     <div className="text-[13px] text-ink2 mt-1 flex items-center gap-2 flex-wrap">
-                      <span className="tabular-nums">{r.mgPerKg.typical} mg/kg</span>
+                      <span className="tabular-nums">{rangeLabel}</span>
                       <span className="text-taupe2">·</span>
                       <span className="font-mono text-ink">{r.route}</span>
                       <span className="text-taupe2">·</span>
                       <span>{r.frequency}</span>
                     </div>
                   </div>
-                  <div className="flex gap-4 shrink-0">
-                    <button type="button" onClick={() => setEditing(r)} className="text-[12px] uppercase tracking-[0.1em] text-moss-700 underline underline-offset-4 decoration-1">Edit</button>
-                    <button type="button" onClick={() => del(r.id)} className="text-[12px] uppercase tracking-[0.1em] text-clay-700 underline underline-offset-4 decoration-1">Delete</button>
+                  <div className="flex gap-6 shrink-0">
+                    <button type="button" onClick={() => setEditing(r)} className="min-h-[44px] inline-flex items-center text-[12px] uppercase tracking-[0.1em] text-moss-700 underline underline-offset-4 decoration-1">Edit</button>
+                    <button type="button" onClick={() => setPendingDelete(r)} className="min-h-[44px] inline-flex items-center text-[12px] uppercase tracking-[0.1em] text-clay-700 underline underline-offset-4 decoration-1">Delete</button>
                   </div>
                 </li>
               );
@@ -311,6 +368,16 @@ export function RulesTab() {
           </ul>
         </>
       )}
+
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        title="Delete this rule?"
+        message={pendingDelete ? `${describeTarget(pendingDelete.target)} — ${pendingDelete.route} ${pendingDelete.frequency}. This cannot be undone.` : undefined}
+        confirmLabel="Delete"
+        destructive
+        onConfirm={confirmDelete}
+        onCancel={() => setPendingDelete(null)}
+      />
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { listMedications, upsertMedication, deleteMedication } from '../../firebase/repos';
+import { ConfirmDialog } from '../../components/ConfirmDialog';
 import type { Medication, Concentration } from '../../domain/types';
 
 const blank: Medication = { id: '', name: '', concentrations: [] };
@@ -7,6 +8,7 @@ const blank: Medication = { id: '', name: '', concentrations: [] };
 export function MedsTab() {
   const [meds, setMeds] = useState<Medication[]>([]);
   const [editing, setEditing] = useState<Medication | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<Medication | null>(null);
 
   async function reload() {
     setMeds(await listMedications());
@@ -23,11 +25,11 @@ export function MedsTab() {
     await reload();
   }
 
-  async function del(id: string) {
-    if (confirm('Delete medication?')) {
-      await deleteMedication(id);
-      await reload();
-    }
+  async function confirmDelete() {
+    if (!pendingDelete) return;
+    await deleteMedication(pendingDelete.id);
+    setPendingDelete(null);
+    await reload();
   }
 
   function updateConc(i: number, patch: Partial<Concentration>) {
@@ -183,6 +185,12 @@ export function MedsTab() {
 
       {isNew && editPanel()}
 
+      {meds.length === 0 && !isNew && (
+        <div className="bg-cream/60 border border-taupe/60 rounded-md px-5 py-8 text-center text-[14px] text-ink2">
+          No medications yet. Tap <span className="text-ink font-medium">+ Add medication</span> to get started.
+        </div>
+      )}
+
       <ul className="space-y-2">
         {meds.map(m => {
           const isEditingThis = editing !== null && editing.id === m.id;
@@ -192,7 +200,7 @@ export function MedsTab() {
           return (
             <li
               key={m.id}
-              className="bg-surface border border-taupe rounded-md p-4 flex items-center justify-between gap-4 hover:bg-cream/40 transition-colors"
+              className="bg-surface border border-taupe rounded-md p-4 flex items-center justify-between gap-6 hover:bg-cream/40 transition-colors"
             >
               <div className="min-w-0">
                 <div
@@ -205,18 +213,18 @@ export function MedsTab() {
                   <div className="text-[13px] italic text-ink2 mt-0.5">{m.genericName}</div>
                 )}
               </div>
-              <div className="flex gap-4 shrink-0">
+              <div className="flex gap-6 shrink-0">
                 <button
                   type="button"
                   onClick={() => setEditing(m)}
-                  className="text-[12px] uppercase tracking-[0.1em] text-moss-700 underline underline-offset-4 decoration-1"
+                  className="min-h-[44px] inline-flex items-center text-[12px] uppercase tracking-[0.1em] text-moss-700 underline underline-offset-4 decoration-1"
                 >
                   Edit
                 </button>
                 <button
                   type="button"
-                  onClick={() => del(m.id)}
-                  className="text-[12px] uppercase tracking-[0.1em] text-clay-700 underline underline-offset-4 decoration-1"
+                  onClick={() => setPendingDelete(m)}
+                  className="min-h-[44px] inline-flex items-center text-[12px] uppercase tracking-[0.1em] text-clay-700 underline underline-offset-4 decoration-1"
                 >
                   Delete
                 </button>
@@ -225,6 +233,16 @@ export function MedsTab() {
           );
         })}
       </ul>
+
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        title="Delete this medication?"
+        message={pendingDelete ? `${pendingDelete.name} and any associated dosing rules will need to be cleaned up. This cannot be undone.` : undefined}
+        confirmLabel="Delete"
+        destructive
+        onConfirm={confirmDelete}
+        onCancel={() => setPendingDelete(null)}
+      />
     </div>
   );
 }

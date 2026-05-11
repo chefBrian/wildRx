@@ -3,6 +3,7 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { listMedications, listSpecies } from '../../firebase/repos';
 import { TypeaheadSelect, type TypeaheadOption } from '../../components/TypeaheadSelect';
 import { WizardHeader } from '../../components/WizardHeader';
+import { formatNumber } from '../../domain/format';
 import { formatGroup, type Medication } from '../../domain/types';
 
 export function SpeciesAndWeight() {
@@ -29,14 +30,18 @@ export function SpeciesAndWeight() {
     listMedications().then(meds => setMed(meds.find(m => m.id === medId) ?? null));
   }, [medId]);
 
+  const weightNum = Number(weight);
+  const weightValid = Number.isFinite(weightNum) && weightNum > 0;
+  const weightAsKg = weightValid && weightNum >= 1000 ? formatNumber(weightNum / 1000) : null;
+
   function go() {
-    if (speciesId && weight) nav(`/calc/${medId}/${speciesId}/${weight}`);
+    if (speciesId && weightValid) nav(`/calc/${medId}/${speciesId}/${weightNum}`);
   }
 
   const selectedOpt = speciesId ? opts.find(o => o.id === speciesId) : null;
 
   return (
-    <main className="mx-auto max-w-md px-5 pb-12">
+    <main className="mx-auto max-w-md px-5 pb-[max(3rem,env(safe-area-inset-bottom))]">
       <WizardHeader
         step={2}
         backTo="/"
@@ -80,7 +85,7 @@ export function SpeciesAndWeight() {
               <button
                 type="button"
                 onClick={() => setSpeciesId(null)}
-                className="mt-3 text-[12px] uppercase tracking-[0.1em] text-moss-700 underline underline-offset-4 decoration-1"
+                className="mt-3 min-h-[44px] inline-flex items-center text-[12px] uppercase tracking-[0.1em] text-moss-700 underline underline-offset-4 decoration-1"
               >
                 Change
               </button>
@@ -93,25 +98,31 @@ export function SpeciesAndWeight() {
               className="block text-[11px] uppercase tracking-[0.14em] text-ink2 mb-2"
             >
               Weight{' '}
-              <span className="lowercase tracking-normal italic text-ink2/80">(grams)</span>
+              <span className="lowercase tracking-normal italic text-ink2">(grams)</span>
             </label>
             <input
               id="weight"
               type="number"
-              inputMode="numeric"
+              inputMode="decimal"
+              min={0}
               value={weight}
               onChange={e => setWeight(e.target.value)}
               placeholder="0"
               className="w-full h-14 border-0 border-b-2 border-taupe bg-transparent px-1 py-2 font-display tabular-nums text-[28px] text-ink placeholder:text-taupe2 focus:border-moss-600 focus:outline-none transition-colors duration-150"
               style={{ fontVariationSettings: '"opsz" 48' }}
             />
+            {weightAsKg && (
+              <div className="mt-1 text-[12px] italic text-ink2 tabular-nums" aria-live="polite">
+                ≈ {weightAsKg} kg
+              </div>
+            )}
           </div>
 
           <button
             type="button"
-            disabled={!speciesId || !weight}
+            disabled={!speciesId || !weightValid}
             onClick={go}
-            className="w-full h-14 bg-moss-600 text-paper font-display font-semibold text-[17px] tracking-[0.08em] uppercase rounded-md hover:bg-moss-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]"
+            className="w-full h-14 bg-moss-600 text-paper font-display font-semibold text-[17px] tracking-[0.08em] uppercase rounded-md hover:bg-moss-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-moss-600"
           >
             Calculate
           </button>

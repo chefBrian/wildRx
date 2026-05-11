@@ -1,4 +1,4 @@
-import { NavLink, Outlet } from 'react-router-dom';
+import { Link, NavLink, Outlet } from 'react-router-dom';
 import { signOut } from 'firebase/auth';
 import { auth } from '../firebase/auth';
 
@@ -10,7 +10,7 @@ const TABS: Array<[string, string]> = [
 
 export default function AdminHome() {
   return (
-    <main className="mx-auto max-w-3xl px-5 pt-10 pb-16">
+    <main className="mx-auto max-w-3xl px-5 pt-10 pb-[max(4rem,env(safe-area-inset-bottom))]">
       <header className="flex items-center justify-between gap-4">
         <div className="space-y-1">
           <div className="text-[11px] uppercase tracking-[0.14em] text-ink2">Admin</div>
@@ -19,13 +19,21 @@ export default function AdminHome() {
             wildRx control
           </h1>
         </div>
-        <button
-          type="button"
-          onClick={() => signOut(auth)}
-          className="text-[12px] uppercase tracking-[0.1em] text-moss-700 underline underline-offset-4 decoration-1"
-        >
-          Sign out
-        </button>
+        <div className="flex items-center gap-4 shrink-0">
+          <Link
+            to="/"
+            className="min-h-[44px] inline-flex items-center text-[12px] uppercase tracking-[0.1em] text-moss-700 underline underline-offset-4 decoration-1"
+          >
+            View calculator
+          </Link>
+          <button
+            type="button"
+            onClick={() => signOut(auth)}
+            className="min-h-[44px] inline-flex items-center text-[12px] uppercase tracking-[0.1em] text-moss-700 underline underline-offset-4 decoration-1"
+          >
+            Sign out
+          </button>
+        </div>
       </header>
 
       <nav className="mt-8 flex gap-2 border-b border-taupe">

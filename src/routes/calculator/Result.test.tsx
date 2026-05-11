@@ -25,9 +25,16 @@ describe('Result', () => {
         <Routes><Route path="/calc/:medId/:speciesId/:weight" element={<Result />} /></Routes>
       </MemoryRouter>
     );
-    await waitFor(() => expect(screen.getByText(/0\.2/)).toBeInTheDocument());
+    await waitFor(() => {
+      // Dose hero shows the typical dose for 1 kg @ 0.2 mg/kg = 0.200 mg.
+      expect(screen.getAllByText(/0\.2/).length).toBeGreaterThan(0);
+    });
     expect(screen.getByText(/PO/i)).toBeInTheDocument();
     expect(screen.getByText(/q24h/i)).toBeInTheDocument();
+    // Math line is shown so volunteers can sanity-check the readout.
+    expect(screen.getByText(/mg\/kg/)).toBeInTheDocument();
+    // Disclaimer is always shown on successful results.
+    expect(screen.getByText(/cross-check with the attending veterinarian/i)).toBeInTheDocument();
   });
 
   it('shows no-rule message when none match', async () => {

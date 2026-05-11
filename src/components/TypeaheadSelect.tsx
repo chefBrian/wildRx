@@ -1,4 +1,4 @@
-import { useMemo, useState, useRef, useEffect } from 'react';
+import { useMemo, useState, useRef, useEffect, useId } from 'react';
 import Fuse from 'fuse.js';
 
 export interface TypeaheadOption {
@@ -34,6 +34,8 @@ export function TypeaheadSelect({ options, onSelect, placeholder, initialQuery =
   const [q, setQ] = useState(initialQuery);
   const [active, setActive] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
+  const listId = useId();
+  const optionId = (i: number) => `${listId}-opt-${i}`;
 
   const fuse = useMemo(
     () => new Fuse(options, { keys: ['label', 'sublabel', 'keywords'], threshold: 0.4 }),
@@ -57,25 +59,62 @@ export function TypeaheadSelect({ options, onSelect, placeholder, initialQuery =
   function onKeyDown(e: React.KeyboardEvent) {
     if (e.key === 'ArrowDown') { e.preventDefault(); setActive(a => Math.min(a + 1, results.length - 1)); }
     else if (e.key === 'ArrowUp') { e.preventDefault(); setActive(a => Math.max(a - 1, 0)); }
-    else if (e.key === 'Enter' && results[active]) { onSelect(results[active].id); }
+    else if (e.key === 'Enter' && results[active]) { e.preventDefault(); onSelect(results[active].id); }
+    else if (e.key === 'Escape' && q) { e.preventDefault(); setQ(''); }
   }
+
+  const announce = queryIsEmpty
+    ? ''
+    : results.length === 0
+      ? 'No results.'
+      : `${results.length} result${results.length === 1 ? '' : 's'}.`;
 
   return (
     <div className="relative">
-      <input
-        ref={inputRef}
-        value={q}
-        onChange={e => setQ(e.target.value)}
-        onKeyDown={onKeyDown}
-        placeholder={placeholder}
-        className="w-full border-0 border-b-2 border-taupe bg-transparent px-1 py-4 text-[17px] font-sans text-ink placeholder:text-taupe2 placeholder:italic focus:border-moss-600 focus:outline-none transition-colors duration-150"
-      />
-      <ul className="mt-3 max-h-[60vh] overflow-y-auto">
+      <div className="relative">
+        <input
+          ref={inputRef}
+          value={q}
+          onChange={e => setQ(e.target.value)}
+          onKeyDown={onKeyDown}
+          placeholder={placeholder}
+          role="combobox"
+          aria-expanded={results.length > 0}
+          aria-controls={listId}
+          aria-autocomplete="list"
+          aria-activedescendant={results[active] ? optionId(active) : undefined}
+          autoComplete="off"
+          autoCorrect="off"
+          autoCapitalize="off"
+          spellCheck={false}
+          className="w-full border-0 border-b-2 border-taupe bg-transparent pl-1 pr-9 py-4 text-[17px] font-sans text-ink placeholder:text-taupe2 placeholder:italic focus:border-moss-600 focus:outline-none transition-colors duration-150"
+        />
+        {q && (
+          <button
+            type="button"
+            onClick={() => { setQ(''); inputRef.current?.focus(); }}
+            aria-label="Clear search"
+            className="absolute right-0 top-1/2 -translate-y-1/2 w-11 h-11 flex items-center justify-center text-ink2 hover:text-ink rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-moss-600"
+          >
+            <svg viewBox="0 0 16 16" aria-hidden className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round">
+              <path d="M3 3l10 10M13 3 3 13" />
+            </svg>
+          </button>
+        )}
+      </div>
+      <div aria-live="polite" className="sr-only">{announce}</div>
+      <ul
+        id={listId}
+        role="listbox"
+        className="mt-3 max-h-[60vh] overflow-y-auto"
+      >
         {results.map((opt, i) => {
           const isActive = i === active;
           return (
             <li
               key={opt.id}
+              id={optionId(i)}
+              role="option"
               onClick={() => onSelect(opt.id)}
               aria-selected={isActive}
               className={
@@ -101,7 +140,7 @@ export function TypeaheadSelect({ options, onSelect, placeholder, initialQuery =
           );
         })}
         {showPreviewHint && (
-          <li className="px-4 py-3 text-[12px] italic text-ink2 text-center">
+          <li className="px-4 py-3 text-[12px] italic text-ink2 text-center" aria-hidden>
             Type to see more
           </li>
         )}

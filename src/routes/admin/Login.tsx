@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { useNavigate } from 'react-router-dom';
 import { auth } from '../../firebase/auth';
+import { friendlyAuthError } from '../../auth/authErrors';
 
 export function Login() {
   const [email, setEmail] = useState('');
@@ -17,15 +18,15 @@ export function Login() {
     try {
       await signInWithEmailAndPassword(auth, email, pw);
       nav('/admin');
-    } catch (e: any) {
-      setErr(e?.message ?? 'Sign-in failed');
+    } catch (e: unknown) {
+      setErr(friendlyAuthError(e));
     } finally {
       setBusy(false);
     }
   }
 
   return (
-    <main className="mx-auto max-w-sm px-5 pt-16 pb-10">
+    <main className="mx-auto max-w-sm px-5 pt-16 pb-[max(2.5rem,env(safe-area-inset-bottom))]">
       <header className="space-y-2">
         <div className="text-[11px] uppercase tracking-[0.14em] text-ink2">Admin</div>
         <h1 className="font-display text-[32px] font-semibold text-ink leading-tight"
@@ -66,7 +67,7 @@ export function Login() {
           {busy ? 'Signing in…' : 'Sign in'}
         </button>
         {err && (
-          <div className="bg-clay-50 border-l-4 border-clay-600 px-4 py-3 text-[13px] text-ink">
+          <div role="alert" className="bg-clay-50 border-l-4 border-clay-600 px-4 py-3 text-[13px] text-ink">
             {err}
           </div>
         )}

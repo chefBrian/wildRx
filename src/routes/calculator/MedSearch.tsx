@@ -19,7 +19,7 @@ export function MedSearch() {
   }, []);
 
   return (
-    <main className="mx-auto max-w-md px-5 pt-16 pb-10">
+    <main className="mx-auto max-w-md px-5 pt-16 pb-[max(2.5rem,env(safe-area-inset-bottom))]">
       <header className="space-y-2">
         <div className="text-[11px] uppercase tracking-[0.14em] text-ink2">Field calculator</div>
         <h1 className="font-display text-[34px] font-semibold text-ink leading-tight"

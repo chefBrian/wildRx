@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { listSpecies, upsertSpecies, deleteSpecies } from '../../firebase/repos';
+import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { formatGroup, type Species, type TaxonomicGroup } from '../../domain/types';
 
 const GROUPS: TaxonomicGroup[] = [
@@ -27,6 +28,7 @@ const blank: Species = {
 export function SpeciesTab() {
   const [items, setItems] = useState<Species[]>([]);
   const [editing, setEditing] = useState<Species | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<Species | null>(null);
 
   async function reload() {
     setItems(await listSpecies());
@@ -43,11 +45,11 @@ export function SpeciesTab() {
     await reload();
   }
 
-  async function del(id: string) {
-    if (confirm('Delete species?')) {
-      await deleteSpecies(id);
-      await reload();
-    }
+  async function confirmDelete() {
+    if (!pendingDelete) return;
+    await deleteSpecies(pendingDelete.id);
+    setPendingDelete(null);
+    await reload();
   }
 
   function editPanel() {
@@ -211,6 +213,12 @@ export function SpeciesTab() {
 
       {isNew && editPanel()}
 
+      {items.length === 0 && !isNew && (
+        <div className="bg-cream/60 border border-taupe/60 rounded-md px-5 py-8 text-center text-[14px] text-ink2">
+          No species yet. Tap <span className="text-ink font-medium">+ Add species</span> to get started.
+        </div>
+      )}
+
       <ul className="space-y-2">
         {items.map(s => {
           const isEditingThis = editing !== null && editing.id === s.id;
@@ -220,7 +228,7 @@ export function SpeciesTab() {
           return (
             <li
               key={s.id}
-              className="bg-surface border border-taupe rounded-md p-4 flex items-center justify-between gap-4"
+              className="bg-surface border border-taupe rounded-md p-4 flex items-center justify-between gap-6"
             >
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
@@ -236,18 +244,18 @@ export function SpeciesTab() {
                 </div>
                 <div className="text-[13px] italic text-ink2 mt-0.5">{s.scientificName}</div>
               </div>
-              <div className="flex gap-4 shrink-0">
+              <div className="flex gap-6 shrink-0">
                 <button
                   type="button"
                   onClick={() => setEditing(s)}
-                  className="text-[12px] uppercase tracking-[0.1em] text-moss-700 underline underline-offset-4 decoration-1"
+                  className="min-h-[44px] inline-flex items-center text-[12px] uppercase tracking-[0.1em] text-moss-700 underline underline-offset-4 decoration-1"
                 >
                   Edit
                 </button>
                 <button
                   type="button"
-                  onClick={() => del(s.id)}
-                  className="text-[12px] uppercase tracking-[0.1em] text-clay-700 underline underline-offset-4 decoration-1"
+                  onClick={() => setPendingDelete(s)}
+                  className="min-h-[44px] inline-flex items-center text-[12px] uppercase tracking-[0.1em] text-clay-700 underline underline-offset-4 decoration-1"
                 >
                   Delete
                 </button>
@@ -256,6 +264,16 @@ export function SpeciesTab() {
           );
         })}
       </ul>
+
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        title="Delete this species?"
+        message={pendingDelete ? `${pendingDelete.commonName} will be removed. Rules that target it by species will no longer match. This cannot be undone.` : undefined}
+        confirmLabel="Delete"
+        destructive
+        onConfirm={confirmDelete}
+        onCancel={() => setPendingDelete(null)}
+      />
     </div>
   );
 }
