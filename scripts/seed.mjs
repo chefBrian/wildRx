@@ -1,7 +1,7 @@
 // scripts/seed.mjs
 //
 // Seeds Firestore with starter species, medications, and dosing rules for
-// Georgia wildlife rehabilitation. Idempotent — re-running overwrites existing
+// Georgia wildlife rehabilitation. Idempotent - re-running overwrites existing
 // docs by stable slug IDs.
 //
 // AUTH: uses the Firebase Admin SDK with Application Default Credentials (ADC).
@@ -31,7 +31,7 @@ const db = getFirestore();
 
 const now = Date.now();
 const SEED_BY = 'seed-script';
-const STARTER_NOTE = 'Starter data — verify against current protocols before clinical use.';
+const STARTER_NOTE = 'Starter data - verify against current protocols before clinical use.';
 
 // ---------- SPECIES ----------
 const species = [
@@ -133,7 +133,7 @@ const species = [
     scientificName: 'Sylvilagus floridanus',
     group: 'smallMammal',
     typicalWeightGrams: { min: 800, max: 1500 },
-    notes: 'Lagomorph — sensitive to many antibiotics (oral penicillins, clindamycin).',
+    notes: 'Lagomorph - sensitive to many antibiotics (oral penicillins, clindamycin).',
   },
   {
     id: 'virginia-opossum',
@@ -148,7 +148,7 @@ const species = [
     scientificName: 'Procyon lotor',
     group: 'mediumMammal',
     typicalWeightGrams: { min: 4000, max: 9000 },
-    notes: 'Rabies vector species — handle with PPE.',
+    notes: 'Rabies vector species - handle with PPE.',
   },
   {
     id: 'big-brown-bat',
@@ -156,7 +156,7 @@ const species = [
     scientificName: 'Eptesicus fuscus',
     group: 'smallMammal',
     typicalWeightGrams: { min: 14, max: 25 },
-    notes: 'Rabies vector species — handle with PPE.',
+    notes: 'Rabies vector species - handle with PPE.',
   },
   {
     id: 'eastern-box-turtle',
@@ -217,7 +217,7 @@ const medications = [
       { label: '100 mg/ml injectable', mgPerMl: 100 },
     ],
     defaultRoute: 'PO',
-    notes: 'Fluoroquinolone antibiotic. Cartilage damage in juveniles — use cautiously in growing animals.',
+    notes: 'Fluoroquinolone antibiotic. Cartilage damage in juveniles - use cautiously in growing animals.',
   },
   {
     id: 'amoxicillin-clavulanate',
@@ -227,7 +227,7 @@ const medications = [
       { label: '62.5 mg/ml drops (Clavamox)', mgPerMl: 62.5 },
     ],
     defaultRoute: 'PO',
-    notes: 'Beta-lactam antibiotic. FATAL in rabbits and many hindgut fermenters — never use in lagomorphs.',
+    notes: 'Beta-lactam antibiotic. FATAL in rabbits and many hindgut fermenters - never use in lagomorphs.',
   },
   {
     id: 'itraconazole',
@@ -283,7 +283,7 @@ const dosingRules = [
     frequency: 'q24h',
     durationDays: { min: 1, max: 5 },
     contraindications: ['Dehydration', 'Renal compromise', 'GI ulceration'],
-    notes: 'Onset 30–60 min PO. Confirm patient is producing urates before NSAID dosing. First dose may be given IM/SC if oral compliance is poor. AVOID in vultures — Old World vultures have died from related NSAIDs; treat New World species cautiously until species-specific data exists.',
+    notes: 'Onset 30–60 min PO. Confirm patient is producing urates before NSAID dosing. First dose may be given IM/SC if oral compliance is poor. AVOID in vultures - Old World vultures have died from related NSAIDs; treat New World species cautiously until species-specific data exists.',
   }),
   rule('meloxicam', { type: 'group', value: 'songbird' }, {
     mgPerKg: { min: 0.2, max: 0.5, typical: 0.2 },
@@ -299,7 +299,7 @@ const dosingRules = [
     frequency: 'q24h',
     durationDays: { min: 1, max: 5 },
     contraindications: ['Dehydration', 'Renal compromise', 'GI ulceration'],
-    notes: 'Squirrels accept the suspension readily off a syringe. For cottontail kits under 100 g, confirm renal maturity (urinating, normal hydration) before NSAID — kits are more sensitive than adults.',
+    notes: 'Squirrels accept the suspension readily off a syringe. For cottontail kits under 100 g, confirm renal maturity (urinating, normal hydration) before NSAID - kits are more sensitive than adults.',
   }),
   rule('meloxicam', { type: 'species', value: 'red-tailed-hawk' }, {
     mgPerKg: { min: 0.2, max: 0.5, typical: 0.3 },
@@ -307,7 +307,7 @@ const dosingRules = [
     frequency: 'q24h',
     durationDays: { min: 1, max: 5 },
     contraindications: ['Dehydration', 'Renal compromise'],
-    notes: 'Adult RTHs tolerate 0.5 mg/kg well; juveniles and underweight birds — start at 0.2 mg/kg. Mix into a small piece of fish or quail leg to disguise the bitter taste.',
+    notes: 'Adult RTHs tolerate 0.5 mg/kg well; juveniles and underweight birds - start at 0.2 mg/kg. Mix into a small piece of fish or quail leg to disguise the bitter taste.',
   }),
 
   // Carprofen
@@ -317,7 +317,7 @@ const dosingRules = [
     frequency: 'q24h',
     durationDays: { min: 1, max: 3 },
     contraindications: ['Dehydration', 'Renal compromise'],
-    notes: 'Inject into pectoral muscle — alternate sides between doses. Slower onset than meloxicam; choose meloxicam for acute pain and carprofen for sustained anti-inflammatory (orthopedic cases, wing/leg fractures post-pinning).',
+    notes: 'Inject into pectoral muscle - alternate sides between doses. Slower onset than meloxicam; choose meloxicam for acute pain and carprofen for sustained anti-inflammatory (orthopedic cases, wing/leg fractures post-pinning).',
   }),
   rule('carprofen', { type: 'group', value: 'smallMammal' }, {
     mgPerKg: { min: 2, max: 4, typical: 2 },
@@ -325,7 +325,7 @@ const dosingRules = [
     frequency: 'q12h',
     durationDays: { min: 1, max: 3 },
     contraindications: ['Dehydration', 'Renal compromise'],
-    notes: 'SC into loose skin over the scruff. Squirrels usually need restraint-wrap for SC dosing — a small towel works. Watch for inappetence; pair with assisted feeding if anorexic.',
+    notes: 'SC into loose skin over the scruff. Squirrels usually need restraint-wrap for SC dosing - a small towel works. Watch for inappetence; pair with assisted feeding if anorexic.',
   }),
 
   // Buprenorphine
@@ -334,14 +334,14 @@ const dosingRules = [
     route: 'IM',
     frequency: 'q6-12h',
     contraindications: ['Respiratory depression', 'Head trauma (sedation may confound exam)'],
-    notes: 'Owls (Strigiformes) show stronger sedative and analgesic response than diurnal raptors at the same mg/kg — start owls at the low end. Onset 30 min; duration 4–8 h. Schedule III — log every dose with date/time/amount/handler per DEA.',
+    notes: 'Owls (Strigiformes) show stronger sedative and analgesic response than diurnal raptors at the same mg/kg - start owls at the low end. Onset 30 min; duration 4–8 h. Schedule III - log every dose with date/time/amount/handler per DEA.',
   }),
   rule('buprenorphine', { type: 'group', value: 'smallMammal' }, {
     mgPerKg: { min: 0.01, max: 0.05, typical: 0.03 },
     route: 'SC',
     frequency: 'q8-12h',
     contraindications: ['Respiratory depression'],
-    notes: 'Lagomorphs (rabbits, cottontails) clear opioids quickly — dose at q6–8h, not q12h, or analgesia gaps. Schedule III — log every dose. Watch respiratory rate for 30 min after first dose.',
+    notes: 'Lagomorphs (rabbits, cottontails) clear opioids quickly - dose at q6–8h, not q12h, or analgesia gaps. Schedule III - log every dose. Watch respiratory rate for 30 min after first dose.',
   }),
 
   // Enrofloxacin
@@ -351,7 +351,7 @@ const dosingRules = [
     frequency: 'q12h',
     durationDays: { min: 7, max: 14 },
     contraindications: ['Juvenile/growing birds (cartilage)', 'Concurrent NSAID + dehydration'],
-    notes: 'Mix into a small piece of fish, mouse, or quail to disguise taste. Watch for crystalluria in any patient with poor urate flow — keep well-hydrated throughout the course. Avoid in growing chicks (fluoroquinolone arthropathy).',
+    notes: 'Mix into a small piece of fish, mouse, or quail to disguise taste. Watch for crystalluria in any patient with poor urate flow - keep well-hydrated throughout the course. Avoid in growing chicks (fluoroquinolone arthropathy).',
   }),
   rule('enrofloxacin', { type: 'group', value: 'songbird' }, {
     mgPerKg: { min: 15, max: 20, typical: 15 },
@@ -367,7 +367,7 @@ const dosingRules = [
     frequency: 'q24h',
     durationDays: { min: 7, max: 14 },
     contraindications: ['Severe dehydration (lower renal clearance)'],
-    notes: 'Oral via 1 ml syringe into the side of the mouth works well in adult box turtles. Pre-medicate with SC LRS if patient is at all dehydrated — reptile renal clearance drops sharply when dry. Switch SC to oral as soon as eating reliably (injection-site granulomas common with prolonged parenteral dosing).',
+    notes: 'Oral via 1 ml syringe into the side of the mouth works well in adult box turtles. Pre-medicate with SC LRS if patient is at all dehydrated - reptile renal clearance drops sharply when dry. Switch SC to oral as soon as eating reliably (injection-site granulomas common with prolonged parenteral dosing).',
   }),
 
   // Clavamox
@@ -377,7 +377,7 @@ const dosingRules = [
     frequency: 'q12h',
     durationDays: { min: 7, max: 14 },
     contraindications: ['Lagomorphs (rabbits)', 'Hindgut fermenters', 'Guinea pigs', 'Chinchillas'],
-    notes: 'NEVER give to rabbits, guinea pigs, chinchillas, or any hindgut fermenter — fatal Clostridium difficile / spiroformes overgrowth within 48–72 h. Squirrels and opossums tolerate well; give with food and add a probiotic (Bene-Bac or species-appropriate) on alternating days.',
+    notes: 'NEVER give to rabbits, guinea pigs, chinchillas, or any hindgut fermenter - fatal Clostridium difficile / spiroformes overgrowth within 48–72 h. Squirrels and opossums tolerate well; give with food and add a probiotic (Bene-Bac or species-appropriate) on alternating days.',
   }),
 
   // Itraconazole
@@ -387,7 +387,7 @@ const dosingRules = [
     frequency: 'q12h',
     durationDays: { min: 14, max: 90 },
     contraindications: ['Hepatic disease', 'Concurrent hepatotoxins'],
-    notes: 'First-line for aspergillosis. Compound oral suspension is more reliable than capsule contents — bioavailability is highly variable from capsules. Recheck CBC/biochem every 2 weeks once course exceeds 4 weeks; discontinue if LFTs rise >2× baseline. African Gray-style hypersensitivity also reported rarely in raptors.',
+    notes: 'First-line for aspergillosis. Compound oral suspension is more reliable than capsule contents - bioavailability is highly variable from capsules. Recheck CBC/biochem every 2 weeks once course exceeds 4 weeks; discontinue if LFTs rise >2× baseline. African Gray-style hypersensitivity also reported rarely in raptors.',
   }),
 
   // Metronidazole
@@ -397,7 +397,7 @@ const dosingRules = [
     frequency: 'q12h',
     durationDays: { min: 5, max: 10 },
     contraindications: ['Hepatic disease'],
-    notes: 'Treatment of choice for trichomoniasis (frounce) — falconers commonly use 50 mg/kg q24h × 5 d for confirmed lesions. Very bitter; mix with a small piece of fish or rodent. Watch for ataxia at higher doses (neurotoxicity).',
+    notes: 'Treatment of choice for trichomoniasis (frounce) - falconers commonly use 50 mg/kg q24h × 5 d for confirmed lesions. Very bitter; mix with a small piece of fish or rodent. Watch for ataxia at higher doses (neurotoxicity).',
   }),
   rule('metronidazole', { type: 'group', value: 'smallMammal' }, {
     mgPerKg: { min: 10, max: 25, typical: 20 },
@@ -405,7 +405,7 @@ const dosingRules = [
     frequency: 'q12h',
     durationDays: { min: 5, max: 10 },
     contraindications: ['Hepatic disease'],
-    notes: 'First-line for Giardia and anaerobic enteritis. Bitter — squirrels often resist; compound with simple syrup or chocolate-flavor base (squirrels and many mammals tolerate cocoa-free chocolate flavors but verify). Give with food.',
+    notes: 'First-line for Giardia and anaerobic enteritis. Bitter - squirrels often resist; compound with simple syrup or chocolate-flavor base (squirrels and many mammals tolerate cocoa-free chocolate flavors but verify). Give with food.',
   }),
 
   // Fenbendazole
@@ -415,7 +415,7 @@ const dosingRules = [
     frequency: 'q24h',
     durationDays: { min: 3, max: 5 },
     contraindications: ['Concurrent severe debility (bone marrow suppression in some species)'],
-    notes: 'STRONGLY AVOID in vultures (Old World and New World) — fatal pancytopenia reported. Standard 5-day course clears most nematodes; repeat in 2–3 weeks to catch the next generation. Mix into a meal portion.',
+    notes: 'STRONGLY AVOID in vultures (Old World and New World) - fatal pancytopenia reported. Standard 5-day course clears most nematodes; repeat in 2–3 weeks to catch the next generation. Mix into a meal portion.',
   }),
   rule('fenbendazole', { type: 'group', value: 'smallMammal' }, {
     mgPerKg: { min: 20, max: 50, typical: 25 },
@@ -429,7 +429,7 @@ const dosingRules = [
     route: 'PO',
     frequency: 'q24h',
     durationDays: { min: 3, max: 5 },
-    notes: 'Higher dose than mammals — reptile metabolism is slower and parasite load tends to be heavier. Repeat course in 2 weeks for full clearance of nematodes. Less reliable for cestodes; consider praziquantel as an alternative.',
+    notes: 'Higher dose than mammals - reptile metabolism is slower and parasite load tends to be heavier. Repeat course in 2 weeks for full clearance of nematodes. Less reliable for cestodes; consider praziquantel as an alternative.',
   }),
 
   // ---- WATERFOWL group coverage ----
@@ -439,7 +439,7 @@ const dosingRules = [
     frequency: 'q24h',
     durationDays: { min: 1, max: 5 },
     contraindications: ['Dehydration', 'Renal compromise'],
-    notes: 'Pre-treat with 20–50 ml/kg SC LRS if patient is at all dehydrated — ducks/geese in care are commonly volume-depleted. Mallards in particular have been reported to develop renal lesions at high doses; use the low end of the range for repeat dosing.',
+    notes: 'Pre-treat with 20–50 ml/kg SC LRS if patient is at all dehydrated - ducks/geese in care are commonly volume-depleted. Mallards in particular have been reported to develop renal lesions at high doses; use the low end of the range for repeat dosing.',
   }),
   rule('carprofen', { type: 'group', value: 'waterfowl' }, {
     mgPerKg: { min: 1, max: 4, typical: 2 },
@@ -447,7 +447,7 @@ const dosingRules = [
     frequency: 'q24h',
     durationDays: { min: 1, max: 3 },
     contraindications: ['Dehydration', 'Renal compromise'],
-    notes: 'IM into pectoral muscle — palpate keel and inject lateral to it. Use for orthopedic pain (wing fractures from collisions are common). Slower onset than meloxicam.',
+    notes: 'IM into pectoral muscle - palpate keel and inject lateral to it. Use for orthopedic pain (wing fractures from collisions are common). Slower onset than meloxicam.',
   }),
   rule('enrofloxacin', { type: 'group', value: 'waterfowl' }, {
     mgPerKg: { min: 15, max: 20, typical: 15 },
@@ -463,7 +463,7 @@ const dosingRules = [
     frequency: 'q12h',
     durationDays: { min: 5, max: 10 },
     contraindications: ['Hepatic disease'],
-    notes: 'For Hexamita and trichomoniasis in waterfowl. Mix into feed; bitter taste reduces voluntary intake — direct gavage may be needed for severe cases.',
+    notes: 'For Hexamita and trichomoniasis in waterfowl. Mix into feed; bitter taste reduces voluntary intake - direct gavage may be needed for severe cases.',
   }),
   rule('itraconazole', { type: 'group', value: 'waterfowl' }, {
     mgPerKg: { min: 5, max: 10, typical: 10 },
@@ -471,7 +471,7 @@ const dosingRules = [
     frequency: 'q12h',
     durationDays: { min: 14, max: 60 },
     contraindications: ['Hepatic disease'],
-    notes: 'Aspergillosis is a major killer of seabirds and waterfowl in rehab — keep enclosures dry, well-ventilated, and prophylax high-risk patients (oiled birds, long-term care). Monitor LFTs every 2 weeks on courses >4 weeks. Mallards reportedly have a lower hepatotoxicity threshold than other ducks; start at 5 mg/kg.',
+    notes: 'Aspergillosis is a major killer of seabirds and waterfowl in rehab - keep enclosures dry, well-ventilated, and prophylax high-risk patients (oiled birds, long-term care). Monitor LFTs every 2 weeks on courses >4 weeks. Mallards reportedly have a lower hepatotoxicity threshold than other ducks; start at 5 mg/kg.',
   }),
   rule('fenbendazole', { type: 'group', value: 'waterfowl' }, {
     mgPerKg: { min: 20, max: 50, typical: 25 },
@@ -488,7 +488,7 @@ const dosingRules = [
     frequency: 'q24h',
     durationDays: { min: 1, max: 5 },
     contraindications: ['Dehydration', 'Renal compromise'],
-    notes: 'Herons and egrets are usually dehydrated on intake — fluid-resuscitate before NSAID dosing. SC or IM route preferred for the first dose since herons often refuse oral meds without a fish carrier.',
+    notes: 'Herons and egrets are usually dehydrated on intake - fluid-resuscitate before NSAID dosing. SC or IM route preferred for the first dose since herons often refuse oral meds without a fish carrier.',
   }),
   rule('carprofen', { type: 'group', value: 'wadingBird' }, {
     mgPerKg: { min: 1, max: 3, typical: 2 },
@@ -504,7 +504,7 @@ const dosingRules = [
     frequency: 'q12h',
     durationDays: { min: 7, max: 14 },
     contraindications: ['Juvenile/growing birds'],
-    notes: 'Oral gavage via flexible tube is the most reliable route in herons — they will not voluntarily eat medicated fish. Hide in a fish if voluntarily feeding. IM is irritating in wading-bird pectorals; avoid.',
+    notes: 'Oral gavage via flexible tube is the most reliable route in herons - they will not voluntarily eat medicated fish. Hide in a fish if voluntarily feeding. IM is irritating in wading-bird pectorals; avoid.',
   }),
   rule('itraconazole', { type: 'group', value: 'wadingBird' }, {
     mgPerKg: { min: 5, max: 10, typical: 10 },
@@ -529,7 +529,7 @@ const dosingRules = [
     frequency: 'q24h',
     durationDays: { min: 1, max: 5 },
     contraindications: ['Dehydration', 'Renal compromise', 'GI ulceration'],
-    notes: 'Allometric scaling — larger body mass means lower mg/kg than rodent dosing. Opossums tolerate well; raccoons variable. Give with food when possible to reduce GI upset. Always hydrate first.',
+    notes: 'Allometric scaling - larger body mass means lower mg/kg than rodent dosing. Opossums tolerate well; raccoons variable. Give with food when possible to reduce GI upset. Always hydrate first.',
   }),
   rule('carprofen', { type: 'group', value: 'mediumMammal' }, {
     mgPerKg: { min: 2, max: 4, typical: 2 },
@@ -537,14 +537,14 @@ const dosingRules = [
     frequency: 'q12h',
     durationDays: { min: 1, max: 3 },
     contraindications: ['Dehydration', 'Renal compromise'],
-    notes: 'Same protocol as carnivore canid dosing. Take with food. Useful for orthopedic injury (HBC raccoons, traumatic opossum injuries). Watch appetite — anorexia warrants discontinuation.',
+    notes: 'Same protocol as carnivore canid dosing. Take with food. Useful for orthopedic injury (HBC raccoons, traumatic opossum injuries). Watch appetite - anorexia warrants discontinuation.',
   }),
   rule('buprenorphine', { type: 'group', value: 'mediumMammal' }, {
     mgPerKg: { min: 0.01, max: 0.03, typical: 0.02 },
     route: 'SC',
     frequency: 'q8-12h',
     contraindications: ['Respiratory depression'],
-    notes: 'SC over scruff or flank. Schedule III — log every dose. Raccoons under buprenorphine become more cooperative for wound care; useful pre-bandage-change. Use PPE — rabies-vector species.',
+    notes: 'SC over scruff or flank. Schedule III - log every dose. Raccoons under buprenorphine become more cooperative for wound care; useful pre-bandage-change. Use PPE - rabies-vector species.',
   }),
   rule('enrofloxacin', { type: 'group', value: 'mediumMammal' }, {
     mgPerKg: { min: 5, max: 15, typical: 10 },
@@ -552,7 +552,7 @@ const dosingRules = [
     frequency: 'q12h',
     durationDays: { min: 7, max: 14 },
     contraindications: ['Juveniles (cartilage)', 'Severe dehydration'],
-    notes: 'Start raccoons at 5 mg/kg — some references cite transient hypersensitivity at higher doses. Opossums tolerate the full range. Take with food.',
+    notes: 'Start raccoons at 5 mg/kg - some references cite transient hypersensitivity at higher doses. Opossums tolerate the full range. Take with food.',
   }),
   rule('amoxicillin-clavulanate', { type: 'group', value: 'mediumMammal' }, {
     mgPerKg: { min: 12.5, max: 22, typical: 15 },
@@ -560,7 +560,7 @@ const dosingRules = [
     frequency: 'q12h',
     durationDays: { min: 7, max: 14 },
     contraindications: ['Concurrent severe diarrhea'],
-    notes: 'Carnivore beta-lactam protocol applies — well tolerated in opossums and raccoons. Give with food. Watch stool quality; if soft stools develop, add a probiotic. Useful for bite wounds, abscesses, dental disease.',
+    notes: 'Carnivore beta-lactam protocol applies - well tolerated in opossums and raccoons. Give with food. Watch stool quality; if soft stools develop, add a probiotic. Useful for bite wounds, abscesses, dental disease.',
   }),
   rule('metronidazole', { type: 'group', value: 'mediumMammal' }, {
     mgPerKg: { min: 10, max: 25, typical: 15 },
@@ -575,7 +575,7 @@ const dosingRules = [
     route: 'PO',
     frequency: 'q24h',
     durationDays: { min: 3, max: 5 },
-    notes: 'Standard parasiticide. Raccoons commonly carry Baylisascaris procyonis — zoonotic and serious; handle feces with PPE during treatment. Repeat course in 14 d. Effective against most other nematodes; less reliable for cestodes.',
+    notes: 'Standard parasiticide. Raccoons commonly carry Baylisascaris procyonis - zoonotic and serious; handle feces with PPE during treatment. Repeat course in 14 d. Effective against most other nematodes; less reliable for cestodes.',
   }),
 
   // ---- SONGBIRD additions ----
@@ -585,7 +585,7 @@ const dosingRules = [
     frequency: 'q12h',
     durationDays: { min: 1, max: 3 },
     contraindications: ['Dehydration', 'Renal compromise'],
-    notes: 'Very small volume — use a 0.5 ml insulin syringe and dilute injectable carprofen 1:5 in sterile saline for accuracy. Injection-site bruising common; rotate sites.',
+    notes: 'Very small volume - use a 0.5 ml insulin syringe and dilute injectable carprofen 1:5 in sterile saline for accuracy. Injection-site bruising common; rotate sites.',
   }),
   rule('itraconazole', { type: 'group', value: 'songbird' }, {
     mgPerKg: { min: 5, max: 10, typical: 5 },
@@ -593,7 +593,7 @@ const dosingRules = [
     frequency: 'q24h',
     durationDays: { min: 14, max: 30 },
     contraindications: ['Hepatic disease'],
-    notes: 'Compound suspension at 5–10 mg/ml is essential — capsule contents are unreliable in tiny passerines. Useful for aspergillosis and candidiasis. Watch for vomiting (rare) and weight loss; weigh weekly.',
+    notes: 'Compound suspension at 5–10 mg/ml is essential - capsule contents are unreliable in tiny passerines. Useful for aspergillosis and candidiasis. Watch for vomiting (rare) and weight loss; weigh weekly.',
   }),
   rule('metronidazole', { type: 'group', value: 'songbird' }, {
     mgPerKg: { min: 20, max: 50, typical: 25 },
@@ -618,7 +618,7 @@ const dosingRules = [
     frequency: 'q24-48h',
     durationDays: { min: 1, max: 5 },
     contraindications: ['Dehydration', 'Renal compromise'],
-    notes: 'Slower clearance than mammals/birds — q24h adequate for chelonians and most lizards, q48h for snakes. Analgesic effect may take 24 h to manifest after first dose. Hydrate well; reptile renal function drops sharply when dry.',
+    notes: 'Slower clearance than mammals/birds - q24h adequate for chelonians and most lizards, q48h for snakes. Analgesic effect may take 24 h to manifest after first dose. Hydrate well; reptile renal function drops sharply when dry.',
   }),
   rule('enrofloxacin', { type: 'group', value: 'reptile' }, {
     mgPerKg: { min: 5, max: 10, typical: 10 },
@@ -626,22 +626,22 @@ const dosingRules = [
     frequency: 'q24-48h',
     durationDays: { min: 7, max: 14 },
     contraindications: ['Severe dehydration'],
-    notes: 'Frequency varies by taxon — most snakes q48h, turtles q24h, small lizards q24h. SC injection causes painful granulomas in many species; oral preferred whenever possible. Avoid in juveniles.',
+    notes: 'Frequency varies by taxon - most snakes q48h, turtles q24h, small lizards q24h. SC injection causes painful granulomas in many species; oral preferred whenever possible. Avoid in juveniles.',
   }),
   rule('metronidazole', { type: 'group', value: 'reptile' }, {
     mgPerKg: { min: 20, max: 50, typical: 25 },
     route: 'PO',
     frequency: 'q24-48h',
     durationDays: { min: 5, max: 10 },
-    contraindications: ['Hepatic disease', 'Snakes (some species sensitive — start low)'],
-    notes: 'For amoebic infections (esp. in chelonians) and anaerobic infections. Indigo snakes, kingsnakes, and milk snakes have shown neurotoxicity at >40 mg/kg — start at 20 mg/kg for any colubrid. Watch for tremors or hindlimb paresis.',
+    contraindications: ['Hepatic disease', 'Snakes (some species sensitive - start low)'],
+    notes: 'For amoebic infections (esp. in chelonians) and anaerobic infections. Indigo snakes, kingsnakes, and milk snakes have shown neurotoxicity at >40 mg/kg - start at 20 mg/kg for any colubrid. Watch for tremors or hindlimb paresis.',
   }),
   rule('buprenorphine', { type: 'group', value: 'reptile' }, {
     mgPerKg: { min: 0.02, max: 0.2, typical: 0.05 },
     route: 'IM',
     frequency: 'q24-48h',
     contraindications: ['Respiratory depression'],
-    notes: 'Reptile opioid pharmacology is highly variable. Chelonians often show poor buprenorphine response — many clinicians use morphine (1.5 mg/kg IM) or hydromorphone instead. Snakes and lizards more reliably responsive. Schedule III — log every dose.',
+    notes: 'Reptile opioid pharmacology is highly variable. Chelonians often show poor buprenorphine response - many clinicians use morphine (1.5 mg/kg IM) or hydromorphone instead. Snakes and lizards more reliably responsive. Schedule III - log every dose.',
   }),
 ];
 
