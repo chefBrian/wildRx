@@ -6,9 +6,10 @@ import {
 import { TypeaheadSelect, type TypeaheadOption } from '../../components/TypeaheadSelect';
 import { calculateDose } from '../../domain/dose';
 import { useAuth } from '../../auth/AuthProvider';
-import type {
-  DosingRule, Medication, Species, TaxonomicGroup,
-  Route as DoseRoute, RuleTarget,
+import {
+  formatGroup,
+  type DosingRule, type Medication, type Species, type TaxonomicGroup,
+  type Route as DoseRoute, type RuleTarget,
 } from '../../domain/types';
 
 const GROUPS: TaxonomicGroup[] = [
@@ -58,7 +59,7 @@ export function RulesTab() {
   }, [medId]);
 
   const targetOptions: TypeaheadOption[] = useMemo(() => [
-    ...GROUPS.map(g => ({ id: `group:${g}`, label: g, badge: 'group', keywords: [g] })),
+    ...GROUPS.map(g => ({ id: `group:${g}`, label: formatGroup(g), badge: 'group', keywords: [g, formatGroup(g)] })),
     ...species.map(s => ({
       id: `species:${s.id}`,
       label: s.commonName,
@@ -98,7 +99,7 @@ export function RulesTab() {
   }
 
   function describeTarget(t: RuleTarget): string {
-    if (t.type === 'group') return `Group: ${t.value}`;
+    if (t.type === 'group') return `Group: ${formatGroup(t.value)}`;
     const s = species.find(x => x.id === t.value);
     return `Species: ${s?.commonName ?? t.value}`;
   }

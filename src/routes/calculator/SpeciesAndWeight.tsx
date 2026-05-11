@@ -3,7 +3,7 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { listMedications, listSpecies } from '../../firebase/repos';
 import { TypeaheadSelect, type TypeaheadOption } from '../../components/TypeaheadSelect';
 import { WizardHeader } from '../../components/WizardHeader';
-import type { Medication } from '../../domain/types';
+import { formatGroup, type Medication } from '../../domain/types';
 
 export function SpeciesAndWeight() {
   const { medId = '' } = useParams();
@@ -21,8 +21,8 @@ export function SpeciesAndWeight() {
           id: s.id,
           label: s.commonName,
           sublabel: s.scientificName,
-          badge: s.group,
-          keywords: [s.commonName, s.scientificName, s.group],
+          badge: formatGroup(s.group),
+          keywords: [s.commonName, s.scientificName, s.group, formatGroup(s.group)],
         }))
       )
     );

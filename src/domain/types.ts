@@ -13,6 +13,24 @@ export type TaxonomicGroup =
   | 'amphibian'
   | 'other';
 
+const GROUP_LABELS: Record<TaxonomicGroup, string> = {
+  raptor: 'Raptor',
+  songbird: 'Songbird',
+  waterfowl: 'Waterfowl',
+  wadingBird: 'Wading Bird',
+  shorebird: 'Shorebird',
+  smallMammal: 'Small Mammal',
+  mediumMammal: 'Medium Mammal',
+  largeMammal: 'Large Mammal',
+  reptile: 'Reptile',
+  amphibian: 'Amphibian',
+  other: 'Other',
+};
+
+export function formatGroup(g: TaxonomicGroup | string): string {
+  return GROUP_LABELS[g as TaxonomicGroup] ?? g;
+}
+
 export interface Species {
   id: string;
   commonName: string;

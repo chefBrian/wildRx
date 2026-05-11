@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { listSpecies, upsertSpecies, deleteSpecies } from '../../firebase/repos';
-import type { Species, TaxonomicGroup } from '../../domain/types';
+import { formatGroup, type Species, type TaxonomicGroup } from '../../domain/types';
 
 const GROUPS: TaxonomicGroup[] = [
   'raptor',
@@ -105,7 +105,7 @@ export function SpeciesTab() {
           >
             {GROUPS.map(g => (
               <option key={g} value={g}>
-                {g}
+                {formatGroup(g)}
               </option>
             ))}
           </select>
@@ -231,7 +231,7 @@ export function SpeciesTab() {
                     {s.commonName}
                   </div>
                   <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-moss-50 text-moss-700 text-[11px] font-medium uppercase tracking-[0.08em]">
-                    {s.group}
+                    {formatGroup(s.group)}
                   </span>
                 </div>
                 <div className="text-[13px] italic text-ink2 mt-0.5">{s.scientificName}</div>
