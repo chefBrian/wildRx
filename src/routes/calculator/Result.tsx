@@ -4,7 +4,44 @@ import { listMedications, listSpecies, listDosingRulesForMed } from '../../fireb
 import { resolveRules, type ResolvedRule } from '../../domain/resolveRules';
 import { calculateDose } from '../../domain/dose';
 import { WizardHeader, type WizardChip } from '../../components/WizardHeader';
-import type { Medication, Species } from '../../domain/types';
+import type { Medication, Route, Species } from '../../domain/types';
+
+const ROUTE_PLAIN: Record<Route, string> = {
+  PO: 'By mouth',
+  IM: 'Into muscle',
+  SC: 'Under skin',
+  IV: 'Into vein',
+  topical: 'On skin',
+};
+
+function plainFrequency(freq: string): string {
+  const f = freq.trim().toLowerCase();
+  // Common token shortcuts
+  if (f === 'once' || f === 'sid' || f === 'q24h') return 'Once a day';
+  if (f === 'bid' || f === 'q12h') return 'Twice a day';
+  if (f === 'tid' || f === 'q8h') return '3 times a day';
+  if (f === 'qid' || f === 'q6h') return '4 times a day';
+  if (f === 'q48h' || f === 'eod') return 'Every other day';
+  if (f === 'prn') return 'As needed';
+  // Range like q6-12h
+  const range = f.match(/^q(\d+)\s*-\s*(\d+)\s*h$/);
+  if (range) return `Every ${range[1]}-${range[2]} hours`;
+  // Single qNh
+  const single = f.match(/^q(\d+)\s*h$/);
+  if (single) {
+    const n = Number(single[1]);
+    if (n === 1) return 'Every hour';
+    return `Every ${n} hours`;
+  }
+  // Fall back to the raw token
+  return freq;
+}
+
+function plainDuration(d: { min: number; max: number } | null): string | null {
+  if (d === null) return null;
+  if (d.min === d.max) return d.min === 1 ? '1 day' : `${d.min} days`;
+  return `${d.min} to ${d.max} days`;
+}
 
 export function Result() {
   const { medId = '', speciesId = '', weight = '0' } = useParams();
@@ -181,19 +218,24 @@ export function Result() {
         <div>
           <div className="text-[11px] uppercase tracking-[0.14em] text-ink2">Route</div>
           <div className="font-display font-mono text-[20px] text-ink mt-1">{rule.route}</div>
+          <div className="text-[12px] text-ink2 mt-0.5">{ROUTE_PLAIN[rule.route]}</div>
         </div>
         <div>
           <div className="text-[11px] uppercase tracking-[0.14em] text-ink2">Freq</div>
           <div className="font-display text-[20px] text-ink mt-1">{rule.frequency}</div>
+          <div className="text-[12px] text-ink2 mt-0.5">{plainFrequency(rule.frequency)}</div>
         </div>
         <div>
           <div className="text-[11px] uppercase tracking-[0.14em] text-ink2">Duration</div>
           <div className="font-display text-[20px] text-ink mt-1">
             {rule.durationDays === null
-              ? '—'
+              ? '-'
               : rule.durationDays.min === rule.durationDays.max
                 ? `${rule.durationDays.min}d`
-                : `${rule.durationDays.min}–${rule.durationDays.max}d`}
+                : `${rule.durationDays.min}-${rule.durationDays.max}d`}
+          </div>
+          <div className="text-[12px] text-ink2 mt-0.5">
+            {plainDuration(rule.durationDays) ?? 'No duration set'}
           </div>
         </div>
       </section>
