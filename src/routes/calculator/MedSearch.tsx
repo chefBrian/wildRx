@@ -35,6 +35,7 @@ export function MedSearch() {
           options={opts}
           placeholder="Search medications…"
           onSelect={id => nav(`/calc/${id}`)}
+          previewCount={6}
         />
       </div>
     </main>

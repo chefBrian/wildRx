@@ -63,6 +63,7 @@ export function SpeciesAndWeight() {
               options={opts}
               placeholder="Search species…"
               onSelect={setSpeciesId}
+              previewCount={6}
             />
           ) : (
             <div>
