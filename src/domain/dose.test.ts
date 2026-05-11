@@ -30,3 +30,19 @@ describe('calculateDose — mg dose', () => {
     expect(result.doseMg.typical).toBeCloseTo(0.5);
   });
 });
+
+describe('calculateDose — volume', () => {
+  it('returns volumeMl when concentration provided', () => {
+    const result = calculateDose({
+      weightGrams: 1000,
+      rule,
+      concentration: { label: '1 mg/ml', mgPerMl: 1 },
+    });
+    expect(result.volumeMl?.typical).toBeCloseTo(0.2);
+  });
+
+  it('omits volumeMl when no concentration provided', () => {
+    const result = calculateDose({ weightGrams: 1000, rule });
+    expect(result.volumeMl).toBeUndefined();
+  });
+});

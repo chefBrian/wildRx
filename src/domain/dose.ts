@@ -13,14 +13,19 @@ export interface DoseResult {
 }
 
 export function calculateDose(input: CalculateDoseInput): DoseResult {
-  const { weightGrams, rule } = input;
+  const { weightGrams, rule, concentration } = input;
   const kg = weightGrams / 1000;
-  return {
-    doseMg: {
-      min: kg * rule.mgPerKg.min,
-      typical: kg * rule.mgPerKg.typical,
-      max: kg * rule.mgPerKg.max,
-    },
-    cappedByMaxDose: false,
+  const doseMg = {
+    min: kg * rule.mgPerKg.min,
+    typical: kg * rule.mgPerKg.typical,
+    max: kg * rule.mgPerKg.max,
   };
+  const volumeMl = concentration
+    ? {
+        min: doseMg.min / concentration.mgPerMl,
+        typical: doseMg.typical / concentration.mgPerMl,
+        max: doseMg.max / concentration.mgPerMl,
+      }
+    : undefined;
+  return { doseMg, volumeMl, cappedByMaxDose: false };
 }
