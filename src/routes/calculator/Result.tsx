@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import { listMedications, listSpecies, listDosingRulesForMed } from '../../firebase/repos';
 import { resolveRules, type ResolvedRule } from '../../domain/resolveRules';
 import { calculateDose } from '../../domain/dose';
+import { WizardHeader, type WizardChip } from '../../components/WizardHeader';
 import type { Medication, Species } from '../../domain/types';
 
 export function Result() {
@@ -48,18 +49,26 @@ export function Result() {
     return <main className="px-5 pt-12 text-ink2">Loading…</main>;
   }
 
+  const stepTwoBack = `/calc/${medId}?species=${speciesId}&weight=${weight}`;
+  const chips: WizardChip[] = [
+    { label: med.name, sublabel: med.genericName, to: '/' },
+    { label: species.commonName, sublabel: `${weightG} g`, to: stepTwoBack },
+  ];
+
   if (matched.length === 0) {
     return (
-      <main className="mx-auto max-w-md px-5 pt-12 pb-12">
-        <header className="space-y-2">
-          <div className="text-[11px] uppercase tracking-[0.14em] text-ink2">Result</div>
-          <h1 className="font-display text-[28px] font-semibold text-ink">{med.name}</h1>
-          <p className="text-[13px] text-ink2">{species.commonName} · {weightG} g</p>
-        </header>
-        <div className="mt-10 bg-ochre-50 border-l-4 border-ochre-600 px-5 py-5">
-          <div className="font-display text-[15px] font-semibold text-ochre-700 uppercase tracking-[0.1em]">No dosing rule</div>
-          <p className="text-[14px] text-ink mt-2">No entry matches <strong>{med.name}</strong> in <strong>{species.commonName}</strong>. Ask a vet.</p>
-        </div>
+      <main className="mx-auto max-w-md px-5 pb-12">
+        <WizardHeader step={3} backTo={stepTwoBack} chips={chips} />
+        <section className="pt-10">
+          <div className="space-y-2">
+            <div className="text-[11px] uppercase tracking-[0.14em] text-ink2">Result</div>
+            <h1 className="font-display text-[28px] font-semibold text-ink">{med.name}</h1>
+          </div>
+          <div className="mt-8 bg-ochre-50 border-l-4 border-ochre-600 px-5 py-5">
+            <div className="font-display text-[15px] font-semibold text-ochre-700 uppercase tracking-[0.1em]">No dosing rule</div>
+            <p className="text-[14px] text-ink mt-2">No entry matches <strong>{med.name}</strong> in <strong>{species.commonName}</strong>. Ask a vet.</p>
+          </div>
+        </section>
       </main>
     );
   }
@@ -73,28 +82,28 @@ export function Result() {
   });
 
   return (
-    <main className="mx-auto max-w-md pb-16">
-      {/* Sticky compact header */}
-      <header className="sticky top-0 z-10 bg-paper/95 backdrop-blur-sm border-b border-taupe px-5 py-4">
+    <main className="mx-auto max-w-md px-5 pb-16">
+      <WizardHeader step={3} backTo={stepTwoBack} chips={chips} />
+
+      <div className="pt-6">
         <div
-          className="font-display text-[26px] font-semibold text-ink leading-none"
+          className="font-display text-[26px] font-semibold text-ink leading-tight"
           style={{ fontVariationSettings: '"opsz" 32' }}
         >
           {med.name}
         </div>
-        <div className="text-[13px] text-ink2 mt-2 flex items-center gap-2 flex-wrap">
-          <span>{species.commonName} · {weightG}g · </span>
+        <div className="text-[13px] text-ink2 mt-1 flex items-center gap-2 flex-wrap">
           {rule.source === 'species' ? (
             <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-moss-50 text-moss-700 text-[11px] font-medium uppercase tracking-[0.08em]">species rule</span>
           ) : (
             <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-ochre-50 text-ochre-700 text-[11px] font-medium uppercase tracking-[0.08em]">group rule</span>
           )}
         </div>
-      </header>
+      </div>
 
       {/* Route selector */}
       {matched.length > 1 && (
-        <div className="flex flex-wrap gap-2 px-5 mt-5">
+        <div className="flex flex-wrap gap-2 mt-5">
           {matched.map((r, i) => {
             const active = i === routeIdx;
             return (
@@ -117,7 +126,7 @@ export function Result() {
       )}
 
       {/* Dose hero */}
-      <section className="px-5 mt-12 mb-10">
+      <section className="mt-12 mb-10">
         <div className="text-[11px] uppercase tracking-[0.14em] text-ink2">Dose</div>
         <div
           className="font-display tabular-nums text-ink leading-none mt-2"
@@ -132,7 +141,7 @@ export function Result() {
 
       {/* Max-cap banner */}
       {result.cappedByMaxDose && rule.maxSingleDoseMg !== null && (
-        <div className="mx-5 my-6 bg-ember-50 border-l-4 border-ember-600 px-5 py-4">
+        <div className="my-6 bg-ember-50 border-l-4 border-ember-600 px-5 py-4">
           <div className="font-display text-[15px] font-semibold text-ember-700 uppercase tracking-[0.1em]">
             ▲ Capped at max single dose
           </div>
@@ -142,7 +151,7 @@ export function Result() {
 
       {/* Volume */}
       {med.concentrations.length > 0 && concentration && result.volumeMl && (
-        <section className="mx-5 my-8 bg-cream px-6 py-6">
+        <section className="my-8 bg-cream px-6 py-6">
           <div className="text-[11px] uppercase tracking-[0.14em] text-ink2">Volume</div>
           <div className="mt-3">
             <select
@@ -168,7 +177,7 @@ export function Result() {
       )}
 
       {/* Stat row */}
-      <section className="grid grid-cols-3 gap-4 px-5 my-10">
+      <section className="grid grid-cols-3 gap-4 my-10">
         <div>
           <div className="text-[11px] uppercase tracking-[0.14em] text-ink2">Route</div>
           <div className="font-display font-mono text-[20px] text-ink mt-1">{rule.route}</div>
@@ -191,7 +200,7 @@ export function Result() {
 
       {/* Contraindications */}
       {rule.contraindications.length > 0 && (
-        <section className="mx-5 my-6 bg-clay-50 px-5 py-4">
+        <section className="my-6 bg-clay-50 px-5 py-4">
           <div className="text-[11px] uppercase tracking-[0.14em] text-clay-700">Contraindications</div>
           <ul className="mt-2 space-y-1 text-[15px] text-ink list-disc pl-5 marker:text-clay-600">
             {rule.contraindications.map((c, i) => (
@@ -201,15 +210,16 @@ export function Result() {
         </section>
       )}
 
-      {/* Notes */}
+      {/* Notes — always visible */}
       {rule.notes && rule.notes.length > 0 && (
-        <details className="mx-5 my-6 group">
-          <summary className="list-none cursor-pointer flex items-center justify-between py-3 border-b border-taupe">
-            <span className="text-[11px] uppercase tracking-[0.14em] text-ink2">Notes</span>
-            <span className="text-[12px] text-ink2 group-open:rotate-90 transition-transform">›</span>
-          </summary>
-          <div className="text-[15px] text-ink whitespace-pre-wrap pt-4 pb-4 leading-relaxed">{rule.notes}</div>
-        </details>
+        <section className="my-6">
+          <div className="text-[11px] uppercase tracking-[0.14em] text-ink2 pb-3 border-b border-taupe">
+            Notes
+          </div>
+          <div className="text-[15px] text-ink whitespace-pre-wrap pt-4 leading-relaxed">
+            {rule.notes}
+          </div>
+        </section>
       )}
     </main>
   );

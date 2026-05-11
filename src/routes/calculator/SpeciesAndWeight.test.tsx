@@ -8,6 +8,9 @@ vi.mock('../../firebase/repos', () => ({
   listSpecies: vi.fn().mockResolvedValue([
     { id: 's1', commonName: 'Red-tailed Hawk', scientificName: 'Buteo jamaicensis', group: 'raptor', typicalWeightGrams: { min: 700, max: 1500 } },
   ]),
+  listMedications: vi.fn().mockResolvedValue([
+    { id: 'm1', name: 'Meloxicam', genericName: 'Meloxicam', concentrations: [] },
+  ]),
 }));
 
 describe('SpeciesAndWeight', () => {
