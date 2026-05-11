@@ -120,7 +120,8 @@ export function RulesTab() {
             <TypeaheadSelect
               options={targetOptions}
               onSelect={setTargetFromOption}
-              placeholder="Search group or species…"
+              placeholder="Type to search group or species…"
+              requireQuery
             />
             <div className="mt-2 text-[13px] text-ink2 italic">
               Current: {describeTarget(editing.target)}

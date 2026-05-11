@@ -14,6 +14,12 @@ interface Props {
   onSelect: (id: string) => void;
   placeholder?: string;
   initialQuery?: string;
+  /**
+   * When true, the result list stays hidden until the user types something.
+   * Useful when the option list is long and the user knows what they want
+   * (e.g. admin rule target picker). Default false (browse mode).
+   */
+  requireQuery?: boolean;
 }
 
 function badgeClasses(badge: string): string {
@@ -23,7 +29,7 @@ function badgeClasses(badge: string): string {
   return 'bg-cream text-ink2';
 }
 
-export function TypeaheadSelect({ options, onSelect, placeholder, initialQuery = '' }: Props) {
+export function TypeaheadSelect({ options, onSelect, placeholder, initialQuery = '', requireQuery = false }: Props) {
   const [q, setQ] = useState(initialQuery);
   const [active, setActive] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -32,9 +38,13 @@ export function TypeaheadSelect({ options, onSelect, placeholder, initialQuery =
     () => new Fuse(options, { keys: ['label', 'sublabel', 'keywords'], threshold: 0.4 }),
     [options]
   );
+  const queryIsEmpty = q.trim() === '';
   const results = useMemo(
-    () => (q.trim() === '' ? options : fuse.search(q).map(r => r.item)),
-    [q, options, fuse]
+    () => {
+      if (queryIsEmpty) return requireQuery ? [] : options;
+      return fuse.search(q).map(r => r.item);
+    },
+    [q, queryIsEmpty, options, fuse, requireQuery]
   );
 
   useEffect(() => { setActive(0); }, [q]);
