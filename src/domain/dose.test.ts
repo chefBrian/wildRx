@@ -46,3 +46,20 @@ describe('calculateDose — volume', () => {
     expect(result.volumeMl).toBeUndefined();
   });
 });
+
+describe('calculateDose — max single dose', () => {
+  const cappedRule: DosingRule = { ...rule, maxSingleDoseMg: 0.3 };
+
+  it('caps typical dose when over max', () => {
+    const result = calculateDose({ weightGrams: 5000, rule: cappedRule });
+    // 5kg * 0.2 = 1.0 mg, capped to 0.3
+    expect(result.doseMg.typical).toBeCloseTo(0.3);
+    expect(result.cappedByMaxDose).toBe(true);
+  });
+
+  it('does not cap when below max', () => {
+    const result = calculateDose({ weightGrams: 1000, rule: cappedRule });
+    expect(result.doseMg.typical).toBeCloseTo(0.2);
+    expect(result.cappedByMaxDose).toBe(false);
+  });
+});

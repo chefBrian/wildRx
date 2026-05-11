@@ -15,11 +15,20 @@ export interface DoseResult {
 export function calculateDose(input: CalculateDoseInput): DoseResult {
   const { weightGrams, rule, concentration } = input;
   const kg = weightGrams / 1000;
-  const doseMg = {
+  const raw = {
     min: kg * rule.mgPerKg.min,
     typical: kg * rule.mgPerKg.typical,
     max: kg * rule.mgPerKg.max,
   };
+  const cap = rule.maxSingleDoseMg;
+  const cappedByMaxDose = cap !== null && raw.typical > cap;
+  const doseMg = cap === null
+    ? raw
+    : {
+        min: Math.min(raw.min, cap),
+        typical: Math.min(raw.typical, cap),
+        max: Math.min(raw.max, cap),
+      };
   const volumeMl = concentration
     ? {
         min: doseMg.min / concentration.mgPerMl,
@@ -27,5 +36,5 @@ export function calculateDose(input: CalculateDoseInput): DoseResult {
         max: doseMg.max / concentration.mgPerMl,
       }
     : undefined;
-  return { doseMg, volumeMl, cappedByMaxDose: false };
+  return { doseMg, volumeMl, cappedByMaxDose };
 }
