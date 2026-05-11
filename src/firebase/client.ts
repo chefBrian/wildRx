@@ -1,6 +1,5 @@
 import { initializeApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
-import { getAuth } from 'firebase/auth';
 
 const cfg = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -11,4 +10,6 @@ const cfg = {
 
 export const app = initializeApp(cfg);
 export const db = getFirestore(app);
-export const auth = getAuth(app);
+
+// `auth` lives in src/firebase/auth.ts so firebase/auth (~80 KiB) ships only
+// in the admin bundle, not in the public-calculator main bundle.

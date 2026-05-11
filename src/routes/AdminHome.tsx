@@ -1,9 +1,6 @@
-import { NavLink, Route, Routes } from 'react-router-dom';
+import { NavLink, Outlet } from 'react-router-dom';
 import { signOut } from 'firebase/auth';
-import { auth } from '../firebase/client';
-import { MedsTab } from './admin/MedsTab';
-import { SpeciesTab } from './admin/SpeciesTab';
-import { RulesTab } from './admin/RulesTab';
+import { auth } from '../firebase/auth';
 
 const TABS: Array<[string, string]> = [
   ['', 'Meds'],
@@ -50,11 +47,7 @@ export default function AdminHome() {
       </nav>
 
       <section className="mt-8">
-        <Routes>
-          <Route index element={<MedsTab />} />
-          <Route path="species" element={<SpeciesTab />} />
-          <Route path="rules" element={<RulesTab />} />
-        </Routes>
+        <Outlet />
       </section>
     </main>
   );

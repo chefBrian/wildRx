@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { onAuthStateChanged, type User } from 'firebase/auth';
-import { auth } from '../firebase/client';
+import { auth } from '../firebase/auth';
 
 interface Ctx { user: User | null; loading: boolean; }
 const AuthCtx = createContext<Ctx>({ user: null, loading: true });
