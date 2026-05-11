@@ -47,6 +47,7 @@ export function RulesTab() {
   const [rules, setRules] = useState<DosingRule[]>([]);
   const [editing, setEditing] = useState<DosingRule | null>(null);
   const [sampleWeight, setSampleWeight] = useState(1000);
+  const [pickingTarget, setPickingTarget] = useState(false);
 
   useEffect(() => {
     listMedications().then(setMeds);
@@ -76,6 +77,7 @@ export function RulesTab() {
       ? { type: 'group', value: value as TaxonomicGroup }
       : { type: 'species', value };
     setEditing({ ...editing, target });
+    setPickingTarget(false);
   }
 
   async function save() {
@@ -126,18 +128,26 @@ export function RulesTab() {
                   Target is fixed once a rule is created. To target a different group or species, delete this rule and add a new one.
                 </div>
               </>
+            ) : pickingTarget ? (
+              <TypeaheadSelect
+                options={targetOptions}
+                onSelect={setTargetFromOption}
+                placeholder="Type to search group or species…"
+                previewCount={6}
+              />
             ) : (
-              <>
-                <TypeaheadSelect
-                  options={targetOptions}
-                  onSelect={setTargetFromOption}
-                  placeholder="Type to search group or species…"
-                  previewCount={6}
-                />
-                <div className="mt-2 text-[13px] text-ink2 italic">
-                  Current: {describeTarget(editing.target)}
+              <div className="bg-cream rounded-md px-4 py-3 flex items-center justify-between gap-3">
+                <div className="text-[15px] text-ink font-medium">
+                  {describeTarget(editing.target)}
                 </div>
-              </>
+                <button
+                  type="button"
+                  onClick={() => setPickingTarget(true)}
+                  className="text-[12px] uppercase tracking-[0.1em] text-moss-700 underline underline-offset-4 decoration-1 shrink-0"
+                >
+                  Change
+                </button>
+              </div>
             )}
           </div>
 
@@ -258,7 +268,11 @@ export function RulesTab() {
             <button
               type="button"
               disabled={!user}
-              onClick={() => user && setEditing(blank(medId, user.uid))}
+              onClick={() => {
+                if (!user) return;
+                setEditing(blank(medId, user.uid));
+                setPickingTarget(true);
+              }}
               className="bg-moss-600 text-paper font-display font-semibold text-[14px] uppercase tracking-[0.08em] h-11 px-5 rounded-md hover:bg-moss-700 disabled:opacity-50 transition-colors"
             >
               + Add rule
