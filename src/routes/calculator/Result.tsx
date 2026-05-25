@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { listMedications, listSpecies, listDosingRulesForMed } from '../../firebase/repos';
 import { resolveRules, type ResolvedRule } from '../../domain/resolveRules';
 import { calculateDose } from '../../domain/dose';
@@ -43,8 +43,13 @@ export function Result() {
   const [species, setSpecies] = useState<Species | null>(null);
   const [matched, setMatched] = useState<ResolvedRule[]>([]);
   const [routeIdx, setRouteIdx] = useState(0);
-  const [concIdx, setConcIdx] = useState(0);
   const [copied, setCopied] = useState(false);
+  const [searchParams] = useSearchParams();
+  const concIdx = (() => {
+    const raw = searchParams.get('conc');
+    const n = raw === null ? 0 : Number(raw);
+    return Number.isFinite(n) && n >= 0 ? n : 0;
+  })();
 
   useEffect(() => {
     let cancelled = false;
@@ -67,14 +72,13 @@ export function Result() {
         setMatched([]);
       }
       setRouteIdx(0);
-      setConcIdx(0);
       setLoading(false);
     }
     load();
     return () => { cancelled = true; };
   }, [medId, speciesId]);
 
-  const stepTwoBack = `/calc/${medId}?species=${speciesId}&weight=${weightValid ? weight : ''}`;
+  const stepTwoBack = `/calc/${medId}?species=${speciesId}&weight=${weightValid ? weight : ''}${searchParams.get('conc') !== null ? `&conc=${searchParams.get('conc')}` : ''}`;
   const chips: WizardChip[] = med && species ? [
     { label: med.name, sublabel: med.genericName, to: '/' },
     { label: species.commonName, sublabel: weightValid ? formatWeightShort(weightKg) : '—', to: stepTwoBack },
@@ -301,21 +305,7 @@ export function Result() {
       {med.concentrations.length > 0 && concentration && result.volumeMl && (
         <section className="my-8 bg-cream px-6 py-6" aria-label="Volume">
           <div className="text-[11px] uppercase tracking-[0.14em] text-ink2">Volume</div>
-          <div className="mt-3 relative inline-block">
-            <select
-              value={concIdx}
-              onChange={e => setConcIdx(Number(e.target.value))}
-              aria-label="Concentration"
-              className="appearance-none bg-transparent border-b border-taupe2 py-2 pl-1 pr-7 font-sans text-[13px] text-ink focus:border-moss-600 focus:outline-none transition-colors"
-            >
-              {med.concentrations.map((c, i) => (
-                <option key={i} value={i}>{c.label}</option>
-              ))}
-            </select>
-            <svg aria-hidden viewBox="0 0 12 8" className="pointer-events-none absolute right-1 top-1/2 -translate-y-1/2 w-3 h-2 text-ink2">
-              <path d="M1 1l5 5 5-5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </div>
+          <div className="mt-1 text-[13px] text-ink2">{concentration?.label}</div>
           <output
             className="block font-display tabular-nums text-ink leading-none mt-4"
             style={{ fontSize: 'clamp(2.25rem, 9vw, 3.75rem)', fontVariationSettings: '"opsz" 96' }}

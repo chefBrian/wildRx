@@ -47,4 +47,23 @@ describe('Result', () => {
     );
     await waitFor(() => expect(screen.getByText(/no dosing rule/i)).toBeInTheDocument());
   });
+
+  it('uses the concentration from ?conc URL param', async () => {
+    const { listMedications } = await import('../../firebase/repos');
+    (listMedications as any).mockResolvedValueOnce([
+      { id: 'm1', name: 'Meloxicam', concentrations: [
+        { label: '1.5 mg/ml first', mgPerMl: 1.5 },
+        { label: '5 mg/ml second', mgPerMl: 5 },
+      ] },
+    ]);
+    render(
+      <MemoryRouter initialEntries={['/calc/m1/s1/1?conc=1']}>
+        <Routes><Route path="/calc/:medId/:speciesId/:weight" element={<Result />} /></Routes>
+      </MemoryRouter>
+    );
+    // Selected concentration label should appear in the volume section caption.
+    await waitFor(() => expect(screen.getByText(/5 mg\/ml second/)).toBeInTheDocument());
+    // The dropdown should NOT exist on the result screen anymore.
+    expect(screen.queryByLabelText(/concentration/i)).not.toBeInTheDocument();
+  });
 });
