@@ -66,4 +66,37 @@ describe('Result', () => {
     // The dropdown should NOT exist on the result screen anymore.
     expect(screen.queryByLabelText(/concentration/i)).not.toBeInTheDocument();
   });
+
+  it('renders notes as a callout block (not a bottom-of-page section)', async () => {
+    const { listDosingRulesForMed } = await import('../../firebase/repos');
+    (listDosingRulesForMed as any).mockResolvedValueOnce([
+      { id: 'r1', medicationId: 'm1', target: { type: 'group', value: 'raptor' },
+        mgPerKg: { min: 0.1, max: 0.5, typical: 0.2 }, route: 'PO', frequency: 'q24h',
+        durationDays: null, maxSingleDoseMg: null, contraindications: [],
+        notes: 'Mix into a small piece of fish.',
+        updatedAt: 0, updatedBy: '' },
+    ]);
+    render(
+      <MemoryRouter initialEntries={['/calc/m1/s1/1']}>
+        <Routes><Route path="/calc/:medId/:speciesId/:weight" element={<Result />} /></Routes>
+      </MemoryRouter>
+    );
+    await waitFor(() => expect(screen.getByText(/mix into a small piece of fish/i)).toBeInTheDocument());
+    // The notes block should carry a "Notes" label rendered in the callout header style.
+    expect(screen.getByText(/^Notes$/)).toBeInTheDocument();
+  });
+
+  it('shows Dose as a column in the stat row with a range sublabel', async () => {
+    render(
+      <MemoryRouter initialEntries={['/calc/m1/s1/1']}>
+        <Routes><Route path="/calc/:medId/:speciesId/:weight" element={<Result />} /></Routes>
+      </MemoryRouter>
+    );
+    await waitFor(() => screen.getByText(/PO/i));
+    // Dose column header
+    expect(screen.getByText(/^Dose$/)).toBeInTheDocument();
+    // Range sublabel under the Dose column. With mgPerKg 0.1-0.5, 1kg weight => range 0.100–0.500 mg.
+    // (formatNumber renders 3 decimals for values >= 0.1 and < 1.)
+    expect(screen.getByText(/range\s+0\.100\s*[–-]\s*0\.500\s+mg/i)).toBeInTheDocument();
+  });
 });

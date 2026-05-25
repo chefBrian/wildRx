@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { listMedications, listSpecies, listDosingRulesForMed } from '../../firebase/repos';
 import { resolveRules, type ResolvedRule } from '../../domain/resolveRules';
@@ -6,6 +6,7 @@ import { calculateDose } from '../../domain/dose';
 import { formatNumber, formatWeight, formatWeightShort } from '../../domain/format';
 import { plainFrequency } from '../../domain/frequency';
 import { WizardHeader, type WizardChip } from '../../components/WizardHeader';
+import { InfoIcon } from '../../components/InfoIcon';
 import type { Medication, Route, Species } from '../../domain/types';
 
 const ROUTE_PLAIN: Record<Route, string> = {
@@ -20,6 +21,38 @@ function plainDuration(d: { min: number; max: number } | null): string | null {
   if (d === null) return null;
   if (d.min === d.max) return d.min === 1 ? '1 day' : `${d.min} days`;
   return `${d.min} to ${d.max} days`;
+}
+
+function buildMathLine(args: {
+  rate: number;
+  weightKg: number;
+  rawDoseTypical: number;
+  capMg: number | null;
+  cappedByMaxDose: boolean;
+  concMgPerMl: number | null;
+  volumeTypical: number | null;
+}): ReactNode {
+  const { rate, weightKg, rawDoseTypical, capMg, cappedByMaxDose, concMgPerMl, volumeTypical } = args;
+  return (
+    <>
+      <span className="text-ink">{formatNumber(rate)}</span> mg/kg
+      <span className="mx-1.5">×</span>
+      <span className="text-ink">{formatNumber(weightKg)}</span> kg
+      <span className="mx-1.5">=</span>
+      <span className="text-ink">{formatNumber(rawDoseTypical)}</span> mg
+      {cappedByMaxDose && capMg !== null && (
+        <span className="ml-1.5 text-ember-700">→ capped at {capMg} mg</span>
+      )}
+      {concMgPerMl !== null && volumeTypical !== null && (
+        <>
+          <span className="mx-1.5">÷</span>
+          <span className="text-ink">{formatNumber(concMgPerMl)}</span> mg/ml
+          <span className="mx-1.5">=</span>
+          <span className="text-ink">{formatNumber(volumeTypical)}</span> ml
+        </>
+      )}
+    </>
+  );
 }
 
 function WarningIcon({ className = '' }: { className?: string }) {
@@ -260,6 +293,21 @@ export function Result() {
         </section>
       )}
 
+      {/* Notes — slate-blue callout sits with contraindications so context isn't buried. */}
+      {rule.notes && rule.notes.length > 0 && (
+        <section className="mt-6 bg-slate-50 border-l-4 border-slate-600 px-5 py-4">
+          <div className="flex items-center gap-2 text-slate-700">
+            <InfoIcon className="w-4 h-4" />
+            <span className="font-display text-[13px] font-semibold uppercase tracking-[0.1em]">
+              Notes
+            </span>
+          </div>
+          <div className="mt-2 text-[15px] text-ink whitespace-pre-wrap leading-relaxed">
+            {rule.notes}
+          </div>
+        </section>
+      )}
+
       {/* Max-cap banner */}
       {result.cappedByMaxDose && rule.maxSingleDoseMg !== null && (
         <div role="alert" className="mt-6 bg-ember-50 border-l-4 border-ember-600 px-5 py-4">
@@ -275,42 +323,16 @@ export function Result() {
         </div>
       )}
 
-      {/* Dose hero */}
-      <section className="mt-10 mb-4" aria-label="Dose">
-        <div className="text-[11px] uppercase tracking-[0.14em] text-ink2">Dose</div>
-        <output
-          className="block font-display tabular-nums text-ink leading-none mt-2"
-          style={{ fontSize: 'clamp(3rem, 13vw, 5.5rem)', fontVariationSettings: '"opsz" 144, "SOFT" 30' }}
-        >
-          {formatNumber(result.doseMg.typical)}<span className="font-sans text-[0.3em] text-ink2 ml-2 align-baseline">mg</span>
-        </output>
-        <div className="text-[13px] italic text-ink2 mt-2">
-          range {formatNumber(result.doseMg.min)} – {formatNumber(result.doseMg.max)} mg
-        </div>
-      </section>
-
-      {/* The math, shown so the volunteer can sanity-check the readout. */}
-      <div className="mt-2 mb-10 font-mono tabular-nums text-[13px] text-ink2 leading-relaxed">
-        <span className="text-ink">{formatNumber(rate)}</span> mg/kg
-        <span className="mx-1.5">×</span>
-        <span className="text-ink">{formatNumber(weightKg)}</span> kg
-        <span className="mx-1.5">=</span>
-        <span className="text-ink">{formatNumber(rawDoseTypical)}</span> mg
-        {result.cappedByMaxDose && rule.maxSingleDoseMg !== null && (
-          <span className="ml-1.5 text-ember-700">→ capped at {rule.maxSingleDoseMg} mg</span>
-        )}
-      </div>
-
-      {/* Volume */}
+      {/* Volume hero — primary readout for staff. */}
       {med.concentrations.length > 0 && concentration && result.volumeMl && (
         <section className="my-8 bg-cream px-6 py-6" aria-label="Volume">
           <div className="text-[11px] uppercase tracking-[0.14em] text-ink2">Volume</div>
-          <div className="mt-1 text-[13px] text-ink2">{concentration?.label}</div>
+          <div className="mt-1 text-[13px] text-ink2">{concentration.label}</div>
           <output
             className="block font-display tabular-nums text-ink leading-none mt-4"
-            style={{ fontSize: 'clamp(2.25rem, 9vw, 3.75rem)', fontVariationSettings: '"opsz" 96' }}
+            style={{ fontSize: 'clamp(2.5rem, 11vw, 5rem)', fontVariationSettings: '"opsz" 144, "SOFT" 30' }}
           >
-            {formatNumber(result.volumeMl.typical)}<span className="font-sans text-[0.32em] text-ink2 ml-2 align-baseline">ml</span>
+            {formatNumber(result.volumeMl.typical)}<span className="font-sans text-[0.3em] text-ink2 ml-2 align-baseline">ml</span>
           </output>
           <div className="text-[13px] italic text-ink2 mt-2">
             range {formatNumber(result.volumeMl.min)} – {formatNumber(result.volumeMl.max)} ml
@@ -318,21 +340,43 @@ export function Result() {
         </section>
       )}
 
-      {/* Stat row */}
-      <section className="grid grid-cols-3 gap-4 my-10">
+      {/* The math, shown so the volunteer can sanity-check the readout. */}
+      <div className="mt-2 mb-10 font-mono tabular-nums text-[13px] text-ink2 leading-relaxed">
+        {buildMathLine({
+          rate,
+          weightKg,
+          rawDoseTypical,
+          capMg: rule.maxSingleDoseMg,
+          cappedByMaxDose: result.cappedByMaxDose,
+          concMgPerMl: concentration?.mgPerMl ?? null,
+          volumeTypical: result.volumeMl?.typical ?? null,
+        })}
+      </div>
+
+      {/* Stat row — Dose demoted to a column; Volume is now the hero above. */}
+      <section className="grid grid-cols-4 gap-3 my-10">
+        <div>
+          <div className="text-[11px] uppercase tracking-[0.14em] text-ink2">Dose</div>
+          <div className="font-display tabular-nums text-[18px] text-ink mt-1">
+            {formatNumber(result.doseMg.typical)} mg
+          </div>
+          <div className="text-[12px] text-ink2 mt-0.5">
+            range {formatNumber(result.doseMg.min)}–{formatNumber(result.doseMg.max)} mg
+          </div>
+        </div>
         <div>
           <div className="text-[11px] uppercase tracking-[0.14em] text-ink2">Route</div>
-          <div className="font-display font-mono text-[20px] text-ink mt-1">{rule.route}</div>
+          <div className="font-display font-mono text-[18px] text-ink mt-1">{rule.route}</div>
           <div className="text-[12px] text-ink2 mt-0.5">{ROUTE_PLAIN[rule.route]}</div>
         </div>
         <div>
           <div className="text-[11px] uppercase tracking-[0.14em] text-ink2">Freq</div>
-          <div className="font-display text-[20px] text-ink mt-1">{rule.frequency}</div>
+          <div className="font-display text-[18px] text-ink mt-1">{rule.frequency}</div>
           <div className="text-[12px] text-ink2 mt-0.5">{plainFrequency(rule.frequency)}</div>
         </div>
         <div>
           <div className="text-[11px] uppercase tracking-[0.14em] text-ink2">Duration</div>
-          <div className="font-display text-[20px] text-ink mt-1">
+          <div className="font-display text-[18px] text-ink mt-1">
             {rule.durationDays === null
               ? '-'
               : rule.durationDays.min === rule.durationDays.max
@@ -344,18 +388,6 @@ export function Result() {
           </div>
         </div>
       </section>
-
-      {/* Notes */}
-      {rule.notes && rule.notes.length > 0 && (
-        <section className="my-6">
-          <div className="text-[11px] uppercase tracking-[0.14em] text-ink2 pb-3 border-b border-taupe">
-            Notes
-          </div>
-          <div className="text-[15px] text-ink whitespace-pre-wrap pt-4 leading-relaxed">
-            {rule.notes}
-          </div>
-        </section>
-      )}
 
       {/* Actions */}
       <div className="mt-10 grid grid-cols-2 gap-3">
