@@ -6,7 +6,7 @@ import { SpeciesAndWeight } from './SpeciesAndWeight';
 
 vi.mock('../../firebase/repos', () => ({
   listSpecies: vi.fn().mockResolvedValue([
-    { id: 's1', commonName: 'Red-tailed Hawk', scientificName: 'Buteo jamaicensis', group: 'raptor', typicalWeightGrams: { min: 700, max: 1500 } },
+    { id: 's1', commonName: 'Red-tailed Hawk', scientificName: 'Buteo jamaicensis', group: 'raptor', typicalWeightKg: { min: 0.7, max: 1.5 } },
   ]),
   listMedications: vi.fn().mockResolvedValue([
     { id: 'm1', name: 'Meloxicam', genericName: 'Meloxicam', concentrations: [] },
@@ -24,7 +24,7 @@ describe('SpeciesAndWeight', () => {
     await waitFor(() => screen.getByText('Red-tailed Hawk'));
     await user.click(screen.getByText('Red-tailed Hawk'));
     const weight = await screen.findByLabelText(/weight/i);
-    await user.type(weight, '1000');
-    expect((weight as HTMLInputElement).value).toBe('1000');
+    await user.type(weight, '1');
+    expect((weight as HTMLInputElement).value).toBe('1');
   });
 });

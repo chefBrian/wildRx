@@ -3,7 +3,6 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { listMedications, listSpecies } from '../../firebase/repos';
 import { TypeaheadSelect, type TypeaheadOption } from '../../components/TypeaheadSelect';
 import { WizardHeader } from '../../components/WizardHeader';
-import { formatNumber } from '../../domain/format';
 import { formatGroup, type Medication } from '../../domain/types';
 
 export function SpeciesAndWeight() {
@@ -32,7 +31,6 @@ export function SpeciesAndWeight() {
 
   const weightNum = Number(weight);
   const weightValid = Number.isFinite(weightNum) && weightNum > 0;
-  const weightAsKg = weightValid && weightNum >= 1000 ? formatNumber(weightNum / 1000) : null;
 
   function go() {
     if (speciesId && weightValid) nav(`/calc/${medId}/${speciesId}/${weightNum}`);
@@ -58,7 +56,7 @@ export function SpeciesAndWeight() {
             Species & weight
           </h1>
           <p className="text-[13px] italic text-ink2 max-w-[34ch]">
-            Pick the species and enter weight in grams.
+            Pick the species and enter weight in kg.
           </p>
         </div>
 
@@ -98,24 +96,20 @@ export function SpeciesAndWeight() {
               className="block text-[11px] uppercase tracking-[0.14em] text-ink2 mb-2"
             >
               Weight{' '}
-              <span className="lowercase tracking-normal italic text-ink2">(grams)</span>
+              <span className="lowercase tracking-normal italic text-ink2">(kg)</span>
             </label>
             <input
               id="weight"
               type="number"
               inputMode="decimal"
               min={0}
+              step="0.001"
               value={weight}
               onChange={e => setWeight(e.target.value)}
               placeholder="0"
               className="w-full h-14 border-0 border-b-2 border-taupe bg-transparent px-1 py-2 font-display tabular-nums text-[28px] text-ink placeholder:text-taupe2 focus:border-moss-600 focus:outline-none transition-colors duration-150"
               style={{ fontVariationSettings: '"opsz" 48' }}
             />
-            {weightAsKg && (
-              <div className="mt-1 text-[12px] italic text-ink2 tabular-nums" aria-live="polite">
-                ≈ {weightAsKg} kg
-              </div>
-            )}
           </div>
 
           <button

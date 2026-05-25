@@ -35,8 +35,8 @@ function WarningIcon({ className = '' }: { className?: string }) {
 export function Result() {
   const { medId = '', speciesId = '', weight = '0' } = useParams();
   const nav = useNavigate();
-  const weightG = Number(weight);
-  const weightValid = Number.isFinite(weightG) && weightG > 0;
+  const weightKg = Number(weight);
+  const weightValid = Number.isFinite(weightKg) && weightKg > 0;
 
   const [loading, setLoading] = useState(true);
   const [med, setMed] = useState<Medication | null>(null);
@@ -77,7 +77,7 @@ export function Result() {
   const stepTwoBack = `/calc/${medId}?species=${speciesId}&weight=${weightValid ? weight : ''}`;
   const chips: WizardChip[] = med && species ? [
     { label: med.name, sublabel: med.genericName, to: '/' },
-    { label: species.commonName, sublabel: weightValid ? formatWeightShort(weightG) : '—', to: stepTwoBack },
+    { label: species.commonName, sublabel: weightValid ? formatWeightShort(weightKg) : '—', to: stepTwoBack },
   ] : [];
 
   const rule = matched[Math.min(routeIdx, Math.max(matched.length - 1, 0))];
@@ -85,11 +85,11 @@ export function Result() {
   const result = useMemo(() => {
     if (!rule || !weightValid) return null;
     return calculateDose({
-      weightGrams: weightG,
+      weightKg,
       rule,
       concentration: med && med.concentrations.length > 0 ? concentration : undefined,
     });
-  }, [rule, weightG, weightValid, med, concentration]);
+  }, [rule, weightKg, weightValid, med, concentration]);
 
   if (loading) {
     return (
@@ -119,7 +119,7 @@ export function Result() {
         <section className="pt-10">
           <div role="alert" className="bg-clay-50 border-l-4 border-clay-600 px-5 py-4">
             <div className="font-display text-[15px] font-semibold text-clay-700 uppercase tracking-[0.1em]">Weight missing</div>
-            <p className="text-[14px] text-ink mt-2">Enter a weight in grams to calculate a dose.</p>
+            <p className="text-[14px] text-ink mt-2">Enter a weight in kg to calculate a dose.</p>
           </div>
           <button
             type="button"
@@ -158,18 +158,17 @@ export function Result() {
     );
   }
 
-  const kg = weightG / 1000;
   const rate = rule.mgPerKg.typical;
-  const rawDoseTypical = kg * rate;
+  const rawDoseTypical = weightKg * rate;
 
   async function copySummary() {
     if (!med || !species || !rule || !result) return;
     const lines = [
       `${med.name}${med.genericName ? ` (${med.genericName})` : ''}`,
       `Species: ${species.commonName}${species.scientificName ? ` — ${species.scientificName}` : ''}`,
-      `Weight: ${formatWeight(weightG)}`,
+      `Weight: ${formatWeight(weightKg)}`,
       `Dose: ${formatNumber(result.doseMg.typical)} mg  (range ${formatNumber(result.doseMg.min)}–${formatNumber(result.doseMg.max)} mg)`,
-      `Rate: ${formatNumber(rate)} mg/kg × ${formatNumber(kg)} kg`,
+      `Rate: ${formatNumber(rate)} mg/kg × ${formatNumber(weightKg)} kg`,
       `Route: ${rule.route} (${ROUTE_PLAIN[rule.route]})`,
       `Frequency: ${rule.frequency} — ${plainFrequency(rule.frequency)}`,
     ];
@@ -290,7 +289,7 @@ export function Result() {
       <div className="mt-2 mb-10 font-mono tabular-nums text-[13px] text-ink2 leading-relaxed">
         <span className="text-ink">{formatNumber(rate)}</span> mg/kg
         <span className="mx-1.5">×</span>
-        <span className="text-ink">{formatNumber(kg)}</span> kg
+        <span className="text-ink">{formatNumber(weightKg)}</span> kg
         <span className="mx-1.5">=</span>
         <span className="text-ink">{formatNumber(rawDoseTypical)}</span> mg
         {result.cappedByMaxDose && rule.maxSingleDoseMg !== null && (

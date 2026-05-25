@@ -32,7 +32,7 @@ describe('repos', () => {
   it('listSpecies returns mapped species', async () => {
     (getDocs as any).mockResolvedValueOnce(mockSnapshot([
       { id: 's1', commonName: 'Red-tailed Hawk', scientificName: 'Buteo jamaicensis',
-        group: 'raptor', typicalWeightGrams: { min: 700, max: 1500 } },
+        group: 'raptor', typicalWeightKg: { min: 0.7, max: 1.5 } },
     ]));
     const res = await listSpecies();
     expect(res[0].commonName).toBe('Red-tailed Hawk');
@@ -65,7 +65,7 @@ describe('repos — writes', () => {
   });
   // Equivalent tests for species + dosingRules
   it('upsertSpecies works', async () => {
-    await upsertSpecies({ id: 's1', commonName: 'X', scientificName: 'Y', group: 'raptor', typicalWeightGrams: { min: 1, max: 2 } });
+    await upsertSpecies({ id: 's1', commonName: 'X', scientificName: 'Y', group: 'raptor', typicalWeightKg: { min: 0.001, max: 0.002 } });
     expect((setDoc as any)).toHaveBeenCalled();
   });
   it('deleteSpecies deletes by id', async () => {

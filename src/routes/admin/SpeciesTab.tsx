@@ -22,7 +22,7 @@ const blank: Species = {
   commonName: '',
   scientificName: '',
   group: 'raptor',
-  typicalWeightGrams: { min: 0, max: 0 },
+  typicalWeightKg: { min: 0, max: 0 },
 };
 
 export function SpeciesTab() {
@@ -119,17 +119,18 @@ export function SpeciesTab() {
               htmlFor="sp-min"
               className="text-[11px] uppercase tracking-[0.14em] text-ink2 mb-1.5 block"
             >
-              Min weight (g)
+              Min weight (kg)
             </label>
             <input
               id="sp-min"
               type="number"
-              value={editing.typicalWeightGrams.min}
+              step="0.001"
+              value={editing.typicalWeightKg.min}
               onChange={e =>
                 setEditing({
                   ...editing,
-                  typicalWeightGrams: {
-                    ...editing.typicalWeightGrams,
+                  typicalWeightKg: {
+                    ...editing.typicalWeightKg,
                     min: Number(e.target.value),
                   },
                 })
@@ -142,17 +143,18 @@ export function SpeciesTab() {
               htmlFor="sp-max"
               className="text-[11px] uppercase tracking-[0.14em] text-ink2 mb-1.5 block"
             >
-              Max weight (g)
+              Max weight (kg)
             </label>
             <input
               id="sp-max"
               type="number"
-              value={editing.typicalWeightGrams.max}
+              step="0.001"
+              value={editing.typicalWeightKg.max}
               onChange={e =>
                 setEditing({
                   ...editing,
-                  typicalWeightGrams: {
-                    ...editing.typicalWeightGrams,
+                  typicalWeightKg: {
+                    ...editing.typicalWeightKg,
                     max: Number(e.target.value),
                   },
                 })

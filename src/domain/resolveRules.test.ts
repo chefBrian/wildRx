@@ -4,7 +4,7 @@ import type { DosingRule, Species } from './types';
 
 const redTail: Species = {
   id: 'sp1', commonName: 'Red-tailed Hawk', scientificName: 'Buteo jamaicensis',
-  group: 'raptor', typicalWeightGrams: { min: 700, max: 1500 },
+  group: 'raptor', typicalWeightKg: { min: 0.7, max: 1.5 },
 };
 
 const base: Omit<DosingRule, 'id' | 'target'> = {

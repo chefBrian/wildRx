@@ -1,7 +1,7 @@
 import type { DosingRule, Concentration } from './types';
 
 export interface CalculateDoseInput {
-  weightGrams: number;
+  weightKg: number;
   rule: DosingRule;
   concentration?: Concentration;
 }
@@ -13,12 +13,11 @@ export interface DoseResult {
 }
 
 export function calculateDose(input: CalculateDoseInput): DoseResult {
-  const { weightGrams, rule, concentration } = input;
-  const kg = weightGrams / 1000;
+  const { weightKg, rule, concentration } = input;
   const raw = {
-    min: kg * rule.mgPerKg.min,
-    typical: kg * rule.mgPerKg.typical,
-    max: kg * rule.mgPerKg.max,
+    min: weightKg * rule.mgPerKg.min,
+    typical: weightKg * rule.mgPerKg.typical,
+    max: weightKg * rule.mgPerKg.max,
   };
   const cap = rule.maxSingleDoseMg;
   const cappedByMaxDose = cap !== null && raw.typical > cap;

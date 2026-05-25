@@ -5,7 +5,7 @@ import { Result } from './Result';
 
 vi.mock('../../firebase/repos', () => ({
   listSpecies: vi.fn().mockResolvedValue([
-    { id: 's1', commonName: 'Red-tailed Hawk', scientificName: 'Buteo jamaicensis', group: 'raptor', typicalWeightGrams: { min: 700, max: 1500 } },
+    { id: 's1', commonName: 'Red-tailed Hawk', scientificName: 'Buteo jamaicensis', group: 'raptor', typicalWeightKg: { min: 0.7, max: 1.5 } },
   ]),
   listMedications: vi.fn().mockResolvedValue([
     { id: 'm1', name: 'Meloxicam', concentrations: [{ label: '1.5 mg/ml', mgPerMl: 1.5 }] },
@@ -21,7 +21,7 @@ vi.mock('../../firebase/repos', () => ({
 describe('Result', () => {
   it('shows calculated mg dose for a 1kg raptor', async () => {
     render(
-      <MemoryRouter initialEntries={['/calc/m1/s1/1000']}>
+      <MemoryRouter initialEntries={['/calc/m1/s1/1']}>
         <Routes><Route path="/calc/:medId/:speciesId/:weight" element={<Result />} /></Routes>
       </MemoryRouter>
     );
@@ -41,7 +41,7 @@ describe('Result', () => {
     const { listDosingRulesForMed } = await import('../../firebase/repos');
     (listDosingRulesForMed as any).mockResolvedValueOnce([]);
     render(
-      <MemoryRouter initialEntries={['/calc/m1/s1/1000']}>
+      <MemoryRouter initialEntries={['/calc/m1/s1/1']}>
         <Routes><Route path="/calc/:medId/:speciesId/:weight" element={<Result />} /></Routes>
       </MemoryRouter>
     );

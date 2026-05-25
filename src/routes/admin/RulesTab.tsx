@@ -49,7 +49,7 @@ export function RulesTab() {
   const [medId, setMedId] = useState<string>('');
   const [rules, setRules] = useState<DosingRule[]>([]);
   const [editing, setEditing] = useState<DosingRule | null>(null);
-  const [sampleWeight, setSampleWeight] = useState(1000);
+  const [sampleWeight, setSampleWeight] = useState(1);
   const [pickingTarget, setPickingTarget] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<DosingRule | null>(null);
   // freqMode is derived: an empty or non-canonical token = custom; otherwise preset.
@@ -115,7 +115,7 @@ export function RulesTab() {
     return `Species: ${s?.commonName ?? t.value}`;
   }
 
-  const preview = editing ? calculateDose({ weightGrams: sampleWeight, rule: editing }) : null;
+  const preview = editing ? calculateDose({ weightKg: sampleWeight, rule: editing }) : null;
 
   function livePreview() {
     if (!editing || !preview) return null;
@@ -123,8 +123,8 @@ export function RulesTab() {
       <div className="bg-moss-50 rounded-md p-4">
         <div className="text-[11px] uppercase tracking-[0.14em] text-moss-700 mb-2">Live preview</div>
         <label className="text-[13px] text-ink2 flex items-center gap-2">
-          Sample weight (g)
-          <input type="number" className="w-28 h-9 rounded-md border border-taupe bg-paper px-3 text-[14px] tabular-nums text-ink focus:border-moss-600 focus:outline-none transition-colors"
+          Sample weight (kg)
+          <input type="number" step="0.001" className="w-28 h-9 rounded-md border border-taupe bg-paper px-3 text-[14px] tabular-nums text-ink focus:border-moss-600 focus:outline-none transition-colors"
             value={sampleWeight}
             onChange={e => setSampleWeight(Number(e.target.value))} />
         </label>

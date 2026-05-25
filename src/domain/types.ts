@@ -36,7 +36,7 @@ export interface Species {
   commonName: string;
   scientificName: string;
   group: TaxonomicGroup;
-  typicalWeightGrams: { min: number; max: number };
+  typicalWeightKg: { min: number; max: number };
   notes?: string;
 }
 

@@ -27,19 +27,14 @@ export function formatNumber(n: number): string {
   return n.toPrecision(2);
 }
 
-/** Format a weight in grams; show kg parenthetically when >= 1000g. */
-export function formatWeight(grams: number): string {
-  if (!Number.isFinite(grams) || grams <= 0) return '—';
-  if (grams >= 1000) {
-    const kg = grams / 1000;
-    return `${grams} g (${formatNumber(kg)} kg)`;
-  }
-  return `${grams} g`;
+/** Format a weight in kg with clinically-useful precision. */
+export function formatWeight(kg: number): string {
+  if (!Number.isFinite(kg) || kg <= 0) return '—';
+  return `${formatNumber(kg)} kg`;
 }
 
 /** Short form for chips / breadcrumbs. */
-export function formatWeightShort(grams: number): string {
-  if (!Number.isFinite(grams) || grams <= 0) return '—';
-  if (grams >= 1000) return `${formatNumber(grams / 1000)} kg`;
-  return `${grams} g`;
+export function formatWeightShort(kg: number): string {
+  if (!Number.isFinite(kg) || kg <= 0) return '—';
+  return `${formatNumber(kg)} kg`;
 }

@@ -19,14 +19,14 @@ const rule: DosingRule = {
 
 describe('calculateDose — mg dose', () => {
   it('computes typical, min, max for a 1 kg animal', () => {
-    const result = calculateDose({ weightGrams: 1000, rule });
+    const result = calculateDose({ weightKg: 1, rule });
     expect(result.doseMg.typical).toBeCloseTo(0.2);
     expect(result.doseMg.min).toBeCloseTo(0.1);
     expect(result.doseMg.max).toBeCloseTo(0.5);
   });
 
   it('scales linearly with weight', () => {
-    const result = calculateDose({ weightGrams: 2500, rule });
+    const result = calculateDose({ weightKg: 2.5, rule });
     expect(result.doseMg.typical).toBeCloseTo(0.5);
   });
 });
@@ -34,7 +34,7 @@ describe('calculateDose — mg dose', () => {
 describe('calculateDose — volume', () => {
   it('returns volumeMl when concentration provided', () => {
     const result = calculateDose({
-      weightGrams: 1000,
+      weightKg: 1,
       rule,
       concentration: { label: '1 mg/ml', mgPerMl: 1 },
     });
@@ -42,7 +42,7 @@ describe('calculateDose — volume', () => {
   });
 
   it('omits volumeMl when no concentration provided', () => {
-    const result = calculateDose({ weightGrams: 1000, rule });
+    const result = calculateDose({ weightKg: 1, rule });
     expect(result.volumeMl).toBeUndefined();
   });
 });
@@ -51,14 +51,14 @@ describe('calculateDose — max single dose', () => {
   const cappedRule: DosingRule = { ...rule, maxSingleDoseMg: 0.3 };
 
   it('caps typical dose when over max', () => {
-    const result = calculateDose({ weightGrams: 5000, rule: cappedRule });
-    // 5kg * 0.2 = 1.0 mg, capped to 0.3
+    const result = calculateDose({ weightKg: 5, rule: cappedRule });
+    // 5 kg * 0.2 = 1.0 mg, capped to 0.3
     expect(result.doseMg.typical).toBeCloseTo(0.3);
     expect(result.cappedByMaxDose).toBe(true);
   });
 
   it('does not cap when below max', () => {
-    const result = calculateDose({ weightGrams: 1000, rule: cappedRule });
+    const result = calculateDose({ weightKg: 1, rule: cappedRule });
     expect(result.doseMg.typical).toBeCloseTo(0.2);
     expect(result.cappedByMaxDose).toBe(false);
   });
