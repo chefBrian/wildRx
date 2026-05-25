@@ -14,7 +14,7 @@ export function SpeciesAndWeight() {
   const [weight, setWeight] = useState<string>(params.get('weight') ?? '');
   const [concIdx, setConcIdx] = useState<number>(() => {
     const fromUrl = params.get('conc');
-    const n = fromUrl === null ? 0 : Number(fromUrl);
+    const n = fromUrl === null ? 0 : Math.floor(Number(fromUrl));
     return Number.isFinite(n) && n >= 0 ? n : 0;
   });
   const nav = useNavigate();
@@ -33,6 +33,12 @@ export function SpeciesAndWeight() {
     );
     listMedications().then(meds => setMed(meds.find(m => m.id === medId) ?? null));
   }, [medId]);
+
+  useEffect(() => {
+    if (med && med.concentrations.length > 0) {
+      setConcIdx(i => Math.min(i, med.concentrations.length - 1));
+    }
+  }, [med]);
 
   const weightNum = Number(weight);
   const weightValid = Number.isFinite(weightNum) && weightNum > 0;

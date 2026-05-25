@@ -86,6 +86,43 @@ describe('SpeciesAndWeight', () => {
     await waitFor(() => expect(landed).toContain('?conc=1'));
   });
 
+  it('pre-selects the concentration from ?conc in the URL on initial load', async () => {
+    const { listMedications } = await import('../../firebase/repos');
+    (listMedications as any).mockResolvedValueOnce([
+      { id: 'm1', name: 'Meloxicam', concentrations: [
+        { label: 'first option', mgPerMl: 1 },
+        { label: 'second option', mgPerMl: 2 },
+      ] },
+    ]);
+    render(
+      <MemoryRouter initialEntries={['/calc/m1?species=s1&conc=1']}>
+        <Routes><Route path="/calc/:medId" element={<SpeciesAndWeight />} /></Routes>
+      </MemoryRouter>
+    );
+    await waitFor(() => screen.getByText('Red-tailed Hawk'));
+    const conc = await screen.findByLabelText(/concentration/i) as HTMLSelectElement;
+    expect(conc.value).toBe('1');
+  });
+
+  it('clamps ?conc to the last valid index when it exceeds the concentration count', async () => {
+    const { listMedications } = await import('../../firebase/repos');
+    (listMedications as any).mockResolvedValueOnce([
+      { id: 'm1', name: 'Meloxicam', concentrations: [
+        { label: 'a', mgPerMl: 1 },
+        { label: 'b', mgPerMl: 2 },
+      ] },
+    ]);
+    render(
+      <MemoryRouter initialEntries={['/calc/m1?species=s1&conc=99']}>
+        <Routes><Route path="/calc/:medId" element={<SpeciesAndWeight />} /></Routes>
+      </MemoryRouter>
+    );
+    await waitFor(() => screen.getByText('Red-tailed Hawk'));
+    const conc = await screen.findByLabelText(/concentration/i) as HTMLSelectElement;
+    // Index 99 clamped to 1 (the last valid index for a 2-concentration med).
+    expect(conc.value).toBe('1');
+  });
+
   it('skips concentration picker when med has one concentration', async () => {
     const { listMedications } = await import('../../firebase/repos');
     (listMedications as any).mockResolvedValueOnce([
