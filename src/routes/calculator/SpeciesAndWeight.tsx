@@ -12,6 +12,11 @@ export function SpeciesAndWeight() {
   const [med, setMed] = useState<Medication | null>(null);
   const [speciesId, setSpeciesId] = useState<string | null>(params.get('species'));
   const [weight, setWeight] = useState<string>(params.get('weight') ?? '');
+  const [concIdx, setConcIdx] = useState<number>(() => {
+    const fromUrl = params.get('conc');
+    const n = fromUrl === null ? 0 : Number(fromUrl);
+    return Number.isFinite(n) && n >= 0 ? n : 0;
+  });
   const nav = useNavigate();
 
   useEffect(() => {
@@ -33,7 +38,10 @@ export function SpeciesAndWeight() {
   const weightValid = Number.isFinite(weightNum) && weightNum > 0;
 
   function go() {
-    if (speciesId && weightValid) nav(`/calc/${medId}/${speciesId}/${weightNum}`);
+    if (speciesId && weightValid) {
+      const concParam = med && med.concentrations.length > 1 ? `?conc=${concIdx}` : '';
+      nav(`/calc/${medId}/${speciesId}/${weightNum}${concParam}`);
+    }
   }
 
   const selectedOpt = speciesId ? opts.find(o => o.id === speciesId) : null;
@@ -87,6 +95,32 @@ export function SpeciesAndWeight() {
               >
                 Change
               </button>
+            </div>
+          )}
+
+          {med && med.concentrations.length > 1 && (
+            <div>
+              <label
+                htmlFor="conc"
+                className="block text-[11px] uppercase tracking-[0.14em] text-ink2 mb-2"
+              >
+                Concentration
+              </label>
+              <div className="relative">
+                <select
+                  id="conc"
+                  value={concIdx}
+                  onChange={e => setConcIdx(Number(e.target.value))}
+                  className="w-full h-12 appearance-none bg-transparent border-b border-taupe py-2 pl-1 pr-7 font-sans text-[15px] text-ink focus:border-moss-600 focus:outline-none transition-colors"
+                >
+                  {med.concentrations.map((c, i) => (
+                    <option key={i} value={i}>{c.label}</option>
+                  ))}
+                </select>
+                <svg aria-hidden viewBox="0 0 12 8" className="pointer-events-none absolute right-1 top-1/2 -translate-y-1/2 w-3 h-2 text-ink2">
+                  <path d="M1 1l5 5 5-5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </div>
             </div>
           )}
 
