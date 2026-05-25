@@ -99,4 +99,22 @@ describe('Result', () => {
     // (formatNumber renders 3 decimals for values >= 0.1 and < 1.)
     expect(screen.getByText(/range\s+0\.100\s*[–-]\s*0\.500\s+mg/i)).toBeInTheDocument();
   });
+
+  it('promotes dose to hero when the med has zero concentrations', async () => {
+    const { listMedications } = await import('../../firebase/repos');
+    (listMedications as any).mockResolvedValueOnce([
+      { id: 'm1', name: 'Meloxicam', concentrations: [] },
+    ]);
+    render(
+      <MemoryRouter initialEntries={['/calc/m1/s1/1']}>
+        <Routes><Route path="/calc/:medId/:speciesId/:weight" element={<Result />} /></Routes>
+      </MemoryRouter>
+    );
+    await waitFor(() => screen.getByText(/PO/i));
+    // When there's no volume to feature, the Dose hero takes its place.
+    const doseHero = screen.getByLabelText('Dose');
+    expect(doseHero).toBeInTheDocument();
+    // Volume section should not appear.
+    expect(screen.queryByLabelText('Volume')).not.toBeInTheDocument();
+  });
 });

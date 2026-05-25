@@ -323,8 +323,8 @@ export function Result() {
         </div>
       )}
 
-      {/* Volume hero — primary readout for staff. */}
-      {med.concentrations.length > 0 && concentration && result.volumeMl && (
+      {/* Volume hero — primary readout for staff. Falls back to dose hero when no concentration. */}
+      {med.concentrations.length > 0 && concentration && result.volumeMl ? (
         <section className="my-8 bg-cream px-6 py-6" aria-label="Volume">
           <div className="text-[11px] uppercase tracking-[0.14em] text-ink2">Volume</div>
           <div className="mt-1 text-[13px] text-ink2">{concentration.label}</div>
@@ -336,6 +336,20 @@ export function Result() {
           </output>
           <div className="text-[13px] italic text-ink2 mt-2">
             range {formatNumber(result.volumeMl.min)} – {formatNumber(result.volumeMl.max)} ml
+          </div>
+        </section>
+      ) : (
+        <section className="my-8 bg-cream px-6 py-6" aria-label="Dose">
+          <div className="text-[11px] uppercase tracking-[0.14em] text-ink2">Dose</div>
+          <div className="mt-1 text-[13px] text-ink2 italic">No concentration data — dose only</div>
+          <output
+            className="block font-display tabular-nums text-ink leading-none mt-4"
+            style={{ fontSize: 'clamp(2.5rem, 11vw, 5rem)', fontVariationSettings: '"opsz" 144, "SOFT" 30' }}
+          >
+            {formatNumber(result.doseMg.typical)}<span className="font-sans text-[0.3em] text-ink2 ml-2 align-baseline">mg</span>
+          </output>
+          <div className="text-[13px] italic text-ink2 mt-2">
+            range {formatNumber(result.doseMg.min)} – {formatNumber(result.doseMg.max)} mg
           </div>
         </section>
       )}
