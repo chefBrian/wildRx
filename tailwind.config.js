@@ -31,6 +31,11 @@ export default {
           600: '#D97A1F',
           700: '#A85510',
         },
+        slate: {
+          50:  '#E7ECEF',
+          600: '#3B5A6B',
+          700: '#27414F',
+        },
       },
       fontFamily: {
         display: ['Fraunces', 'Georgia', 'serif'],
