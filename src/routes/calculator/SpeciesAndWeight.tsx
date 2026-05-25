@@ -34,18 +34,17 @@ export function SpeciesAndWeight() {
     listMedications().then(meds => setMed(meds.find(m => m.id === medId) ?? null));
   }, [medId]);
 
-  useEffect(() => {
-    if (med && med.concentrations.length > 0) {
-      setConcIdx(i => Math.min(i, med.concentrations.length - 1));
-    }
-  }, [med]);
+  // Clamp during render so stale or tampered ?conc values never desync from the rendered <option>.
+  const effectiveConcIdx = med && med.concentrations.length > 0
+    ? Math.min(concIdx, med.concentrations.length - 1)
+    : concIdx;
 
   const weightNum = Number(weight);
   const weightValid = Number.isFinite(weightNum) && weightNum > 0;
 
   function go() {
     if (speciesId && weightValid) {
-      const concParam = med && med.concentrations.length > 1 ? `?conc=${concIdx}` : '';
+      const concParam = med && med.concentrations.length > 1 ? `?conc=${effectiveConcIdx}` : '';
       nav(`/calc/${medId}/${speciesId}/${weightNum}${concParam}`);
     }
   }
@@ -115,7 +114,7 @@ export function SpeciesAndWeight() {
               <div className="relative">
                 <select
                   id="conc"
-                  value={concIdx}
+                  value={effectiveConcIdx}
                   onChange={e => setConcIdx(Number(e.target.value))}
                   className="w-full h-12 appearance-none bg-transparent border-b border-taupe py-2 pl-1 pr-7 font-sans text-[15px] text-ink focus:border-moss-600 focus:outline-none transition-colors"
                 >
