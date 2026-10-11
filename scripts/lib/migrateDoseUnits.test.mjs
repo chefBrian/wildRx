@@ -123,6 +123,37 @@ describe('migrateMedication', () => {
     expect(r.flags.some(f => /check unit/.test(f))).toBe(true);
   });
 
+  it('flags a label strength that disagrees with the number', () => {
+    const r = migrateMedication({
+      name: 'X', concentrations: [{ label: '5 mg/ml injectable', mgPerMl: 50 }],
+    }, makeId);
+    expect(r.flags).toContain('label strength 5 disagrees with number 50 - confirm the bottle: "5 mg/ml injectable"');
+  });
+
+  it.each([
+    ['22.7 mg/ml oral suspension (Baytril)', 22.7],
+    ['50mg/ml', 50],
+    ['drops (Clavamox)', 62.5],
+  ])('does not flag a strength disagreement for %j', (label, mgPerMl) => {
+    const r = migrateMedication({ name: 'X', concentrations: [{ label, mgPerMl }] }, makeId);
+    expect(r.flags.some(f => /disagrees/.test(f))).toBe(false);
+  });
+
+  it('returns a before and after line for every migrated concentration', () => {
+    const r = migrateMedication({
+      name: 'Enrofloxacin',
+      concentrations: [
+        { label: '22.7 mg/ml oral suspension (Baytril)', mgPerMl: 22.7 },
+        { label: '100 mg/ml injectable', mgPerMl: 100 },
+        { label: '34 mg tablet', mgPerMl: 34 },
+      ],
+    }, makeId);
+    expect(r.lines).toEqual([
+      '"22.7 mg/ml oral suspension (Baytril)" (mgPerMl 22.7) → 22.7 mg/ml · oral · Baytril',
+      '"100 mg/ml injectable" (mgPerMl 100) → 100 mg/ml · injectable',
+    ]);
+  });
+
   it('skips already-migrated docs', () => {
     expect(migrateMedication({ name: 'x', doseUnit: 'mg', concentrations: [] }, makeId)).toBeNull();
   });

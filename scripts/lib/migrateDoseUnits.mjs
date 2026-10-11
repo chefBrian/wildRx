@@ -24,6 +24,7 @@ export function migrateMedication(data, makeId) {
   if ('doseUnit' in data) return null;
   const flags = [];
   const concentrations = [];
+  const lines = [];
   for (const c of data.concentrations ?? []) {
     const label = String(c.label ?? '');
     if (/tablet/i.test(label)) {
@@ -37,13 +38,25 @@ export function migrateMedication(data, makeId) {
     }
     const form = parseForm(label);
     const note = noteFromLabel(label);
+    const labelStrength = leadingStrength(label);
+    if (labelStrength !== null && labelStrength !== value) {
+      flags.push(`label strength ${labelStrength} disagrees with number ${value} - confirm the bottle: "${label}"`);
+    }
     if (form === 'other') flags.push(`form parsed as other: "${label}"`);
     if (note && NOTE_STRENGTH.test(note)) flags.push(`note contains a strength - edit before saving: "${note}"`);
     concentrations.push(note ? { id: makeId(), value, form, note } : { id: makeId(), value, form });
+    lines.push(`"${label}" (mgPerMl ${c.mgPerMl}) → ${[`${value} mg/ml`, form, note].filter(Boolean).join(' · ')}`);
   }
   if (looksLikeNonMg(data)) flags.push('name/labels/notes suggest IU or ml dosing - check unit');
   const { concentrations: _old, ...rest } = data;
-  return { data: { ...rest, doseUnit: 'mg', concentrations }, flags };
+  return { data: { ...rest, doseUnit: 'mg', concentrations }, flags, lines };
+}
+
+function leadingStrength(label) {
+  const m = /^\s*(\d[\d,]*(?:\.\d+)?|\.\d+)\s*(?:mg|iu)/i.exec(label);
+  if (!m) return null;
+  const n = Number(m[1].replace(/,/g, ''));
+  return Number.isFinite(n) ? n : null;
 }
 
 export function parseForm(label) {
