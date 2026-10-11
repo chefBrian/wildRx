@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { listMedications } from '../../firebase/repos';
+import { formatUnitBadge } from '../../domain/format';
 import { TypeaheadSelect, type TypeaheadOption } from '../../components/TypeaheadSelect';
 
 export function MedSearch() {
@@ -13,6 +14,7 @@ export function MedSearch() {
         id: m.id,
         label: m.name,
         sublabel: m.genericName,
+        badge: formatUnitBadge(m.doseUnit),
         keywords: [m.name, m.genericName ?? ''],
       })))
     );

@@ -6,8 +6,9 @@ import { MedSearch } from './MedSearch';
 
 vi.mock('../../firebase/repos', () => ({
   listMedications: vi.fn().mockResolvedValue([
-    { id: 'm1', name: 'Meloxicam', concentrations: [] },
-    { id: 'm2', name: 'Amoxicillin', concentrations: [] },
+    { id: 'm1', name: 'Meloxicam', doseUnit: 'mg', concentrations: [] },
+    { id: 'm2', name: 'Vitamin A', doseUnit: 'IU', concentrations: [] },
+    { id: 'm3', name: 'Pepto-Bismol', doseUnit: 'ml', concentrations: [], productDescription: 'Original' },
   ]),
 }));
 
@@ -15,6 +16,14 @@ describe('MedSearch', () => {
   it('loads and shows medications', async () => {
     render(<MemoryRouter><MedSearch /></MemoryRouter>);
     await waitFor(() => expect(screen.getByText('Meloxicam')).toBeInTheDocument());
+  });
+
+  it('shows the dose unit as a badge on each medication', async () => {
+    render(<MemoryRouter><MedSearch /></MemoryRouter>);
+    await waitFor(() => screen.getByText('Meloxicam'));
+    expect(screen.getByText('mg')).toBeInTheDocument();
+    expect(screen.getByText('IU')).toBeInTheDocument();
+    expect(screen.getByText('ml/kg')).toBeInTheDocument();
   });
 
   it('navigates to species select when a med is picked', async () => {

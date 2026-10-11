@@ -3,6 +3,7 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { listMedications, listSpecies } from '../../firebase/repos';
 import { TypeaheadSelect, type TypeaheadOption } from '../../components/TypeaheadSelect';
 import { WizardHeader } from '../../components/WizardHeader';
+import { formatConcentration } from '../../domain/format';
 import { formatGroup, type Medication } from '../../domain/types';
 
 export function SpeciesAndWeight() {
@@ -12,11 +13,8 @@ export function SpeciesAndWeight() {
   const [med, setMed] = useState<Medication | null>(null);
   const [speciesId, setSpeciesId] = useState<string | null>(params.get('species'));
   const [weight, setWeight] = useState<string>(params.get('weight') ?? '');
-  const [concIdx, setConcIdx] = useState<number>(() => {
-    const fromUrl = params.get('conc');
-    const n = fromUrl === null ? 0 : Math.floor(Number(fromUrl));
-    return Number.isFinite(n) && n >= 0 ? n : 0;
-  });
+  const [concId, setConcId] = useState<string | null>(params.get('conc'));
+  const redirectedToPick = params.get('pick') === '1';
   const nav = useNavigate();
 
   useEffect(() => {
@@ -34,19 +32,19 @@ export function SpeciesAndWeight() {
     listMedications().then(meds => setMed(meds.find(m => m.id === medId) ?? null));
   }, [medId]);
 
-  // Clamp during render so stale or tampered ?conc values never desync from the rendered <option>.
-  const effectiveConcIdx = med && med.concentrations.length > 0
-    ? Math.min(concIdx, med.concentrations.length - 1)
-    : concIdx;
-
   const weightNum = Number(weight);
   const weightValid = Number.isFinite(weightNum) && weightNum > 0;
 
+  // Several concentrations: nothing is chosen until the user picks (or a valid ?conc id says so).
+  // Never default to the first row - with ivermectin 10 vs 1 mg/ml that's a 10x guess.
+  const showConcPicker = !!med && med.doseUnit !== 'ml' && med.concentrations.length > 1;
+  const effectiveConcId = med?.concentrations.some(c => c.id === concId) ? concId : null;
+  const canCalculate = !!speciesId && weightValid && (!showConcPicker || effectiveConcId !== null);
+
   function go() {
-    if (speciesId && weightValid) {
-      const concParam = med && med.concentrations.length > 1 ? `?conc=${effectiveConcIdx}` : '';
-      nav(`/calc/${medId}/${speciesId}/${weightNum}${concParam}`);
-    }
+    if (!canCalculate) return;
+    const concParam = showConcPicker ? `?conc=${encodeURIComponent(effectiveConcId!)}` : '';
+    nav(`/calc/${medId}/${speciesId}/${weightNum}${concParam}`);
   }
 
   const selectedOpt = speciesId ? opts.find(o => o.id === speciesId) : null;
@@ -103,7 +101,7 @@ export function SpeciesAndWeight() {
             </div>
           )}
 
-          {med && med.concentrations.length > 1 && (
+          {showConcPicker && med && (
             <div>
               <label
                 htmlFor="conc"
@@ -111,21 +109,34 @@ export function SpeciesAndWeight() {
               >
                 Concentration
               </label>
+              {redirectedToPick && (
+                <p role="status" className="text-[13px] text-ochre-700 mb-2">
+                  Pick the concentration you're using - the link didn't say which bottle.
+                </p>
+              )}
               <div className="relative">
                 <select
                   id="conc"
-                  value={effectiveConcIdx}
-                  onChange={e => setConcIdx(Number(e.target.value))}
+                  value={effectiveConcId ?? ''}
+                  onChange={e => setConcId(e.target.value)}
                   className="w-full h-12 appearance-none bg-transparent border-b border-taupe py-2 pl-1 pr-7 font-sans text-[15px] text-ink focus:border-moss-600 focus:outline-none transition-colors"
                 >
-                  {med.concentrations.map((c, i) => (
-                    <option key={i} value={i}>{c.label}</option>
+                  <option value="" disabled>Choose the bottle you're using</option>
+                  {med.concentrations.map(c => (
+                    <option key={c.id} value={c.id}>{formatConcentration(c, med.doseUnit)}</option>
                   ))}
                 </select>
                 <svg aria-hidden viewBox="0 0 12 8" className="pointer-events-none absolute right-1 top-1/2 -translate-y-1/2 w-3 h-2 text-ink2">
                   <path d="M1 1l5 5 5-5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               </div>
+            </div>
+          )}
+
+          {med && med.doseUnit === 'ml' && (
+            <div>
+              <div className="text-[11px] uppercase tracking-[0.14em] text-ink2 mb-2">Product</div>
+              <div className="text-[15px] text-ink">{med.productDescription}</div>
             </div>
           )}
 
@@ -153,7 +164,7 @@ export function SpeciesAndWeight() {
 
           <button
             type="button"
-            disabled={!speciesId || !weightValid}
+            disabled={!canCalculate}
             onClick={go}
             className="w-full h-14 bg-moss-600 text-paper font-display font-semibold text-[17px] tracking-[0.08em] uppercase rounded-md hover:bg-moss-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-moss-600"
           >
