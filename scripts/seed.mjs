@@ -217,6 +217,8 @@ const medications = [
     concentrations: [
       { id: 'inj-22.7', value: 22.7, form: 'injectable', note: 'Baytril - often given by mouth' },
       { id: 'inj-100', value: 100, form: 'injectable' },
+      { id: 'inj-50', value: 50, form: 'injectable', note: 'Baytril (EU)' },
+      { id: 'oral-10', value: 10, form: 'oral', note: 'compounded' },
     ],
     defaultRoute: 'PO',
     notes: 'Fluoroquinolone antibiotic. Cartilage damage in juveniles - use cautiously in growing animals.',
@@ -288,7 +290,7 @@ const medications = [
     doseUnit: 'mg',
     concentrations: [
       { id: 'inj-10', value: 10, form: 'injectable', note: 'Ivomec' },
-      { id: 'inj-1', value: 1, form: 'injectable', note: 'in-house dilution for small patients' },
+      { id: 'inj-1', value: 1, form: 'injectable', note: '1:10 dilution in propylene glycol' },
     ],
     defaultRoute: 'SC',
     notes: 'Macrocyclic lactone antiparasitic for mites, lice, and some nematodes. DO NOT USE in chelonians (turtles, tortoises) - toxic. Use cautiously in indigo snakes. Dilute concentrated stock before dosing small patients to avoid measurement errors.',
@@ -394,6 +396,11 @@ const dosingRules = [
     contraindications: ['Dehydration', 'Renal compromise'],
     notes: 'Adult RTHs tolerate 0.5 mg/kg well; juveniles and underweight birds - start at 0.2 mg/kg. Mix into a small piece of fish or quail leg to disguise the bitter taste.',
   }),
+  rule('meloxicam', { type: 'species', value: 'eastern-box-turtle' }, {
+    dosePerKg: { min: 0.1, max: 0.1, typical: 0.1 },
+    route: 'IM',
+    frequency: 'q48h',
+  }),
 
   // Carprofen
   rule('carprofen', { type: 'group', value: 'raptor' }, {
@@ -431,7 +438,7 @@ const dosingRules = [
 
   // Enrofloxacin
   rule('enrofloxacin', { type: 'group', value: 'raptor' }, {
-    dosePerKg: { min: 15, max: 20, typical: 15 },
+    dosePerKg: { min: 15, max: 20, typical: 20 },
     route: 'PO',
     frequency: 'q12h',
     durationDays: { min: 7, max: 14 },
