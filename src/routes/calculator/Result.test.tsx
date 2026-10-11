@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { Result } from './Result';
@@ -191,5 +191,25 @@ describe('Result', () => {
     vi.mocked(listDosingRulesForMed).mockRejectedValueOnce(new SchemaMismatchError('dosingRules', 'r1'));
     renderAt('/calc/m1/s1/1');
     await waitFor(() => expect(screen.getByText(/data update in progress/i)).toBeInTheDocument());
+  });
+
+  it('copies the volume range and warnings for an ml med', async () => {
+    const { listMedications, listDosingRulesForMed } = await import('../../firebase/repos');
+    vi.mocked(listMedications).mockResolvedValueOnce([
+      { id: 'm1', name: 'Pepto-Bismol', doseUnit: 'ml', concentrations: [],
+        productDescription: 'Pepto-Bismol Original (17.5 mg/ml)' },
+    ]);
+    vi.mocked(listDosingRulesForMed).mockResolvedValueOnce([
+      { ...baseRule, dosePerKg: { min: 1, typical: 1, max: 2 }, maxSingleDose: 0.8 },
+    ]);
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+    renderAt('/calc/m1/s1/0.5');
+    await waitFor(() => screen.getByLabelText('Volume'));
+    fireEvent.click(screen.getByRole('button', { name: /copy summary/i }));
+    await waitFor(() => expect(writeText).toHaveBeenCalled());
+    const text = writeText.mock.calls[0][0] as string;
+    expect(text).toMatch(/^Volume: 0\.5 ml {2}\(range 0\.5[–-]0\.8 ml\) @ /m);
+    expect(text).toMatch(/^⚠ /m);
   });
 });

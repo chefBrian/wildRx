@@ -244,7 +244,10 @@ export function Result() {
     );
     if (rule.durationDays) lines.push(`Duration: ${plainDuration(rule.durationDays)}`);
     if (result.volumeMl) {
-      lines.push(`Volume: ${formatNumber(result.volumeMl.typical)} ml${volumeSubtitle ? ` @ ${volumeSubtitle}` : ''}`);
+      const volumeRange = isRange(result.volumeMl.min, result.volumeMl.max)
+        ? `  (range ${formatRange(result.volumeMl.min, result.volumeMl.max, 'ml')})`
+        : '';
+      lines.push(`Volume: ${formatNumber(result.volumeMl.typical)} ml${volumeRange}${volumeSubtitle ? ` @ ${volumeSubtitle}` : ''}`);
     }
     for (const w of warnings) lines.push(`⚠ ${w.title}: ${w.body}`);
     if (rule.contraindications.length > 0) {

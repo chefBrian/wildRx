@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useParams } from 'react-router-dom';
 import CalculatorHome from './routes/CalculatorHome';
 import NotFound from './routes/NotFound';
 import { SpeciesAndWeight } from './routes/calculator/SpeciesAndWeight';
@@ -18,7 +18,7 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<CalculatorHome />} />
-        <Route path="/calc/:medId" element={<SpeciesAndWeight />} />
+        <Route path="/calc/:medId" element={<StepTwoRoute />} />
         <Route path="/calc/:medId/:speciesId/:weight" element={<Result />} />
         <Route
           path="/admin/*"
@@ -32,4 +32,10 @@ export default function App() {
       </Routes>
     </BrowserRouter>
   );
+}
+
+// Remount per med so concentration, species and weight state can't carry between /calc/:medId routes.
+function StepTwoRoute() {
+  const { medId } = useParams();
+  return <SpeciesAndWeight key={medId} />;
 }
