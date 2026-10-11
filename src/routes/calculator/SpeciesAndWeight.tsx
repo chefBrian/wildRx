@@ -39,7 +39,7 @@ export function SpeciesAndWeight() {
   // Never default to the first row - with ivermectin 10 vs 1 mg/ml that's a 10x guess.
   const showConcPicker = !!med && med.doseUnit !== 'ml' && med.concentrations.length > 1;
   const effectiveConcId = med?.concentrations.some(c => c.id === concId) ? concId : null;
-  const canCalculate = !!speciesId && weightValid && (!showConcPicker || effectiveConcId !== null);
+  const canCalculate = !!med && !!speciesId && weightValid && (!showConcPicker || effectiveConcId !== null);
 
   function go() {
     if (!canCalculate) return;

@@ -147,14 +147,34 @@ describe('SpeciesAndWeight', () => {
       { id: 'm1', name: 'Meloxicam', doseUnit: 'mg', concentrations: [{ id: 'only', value: 1, form: 'oral' }] },
     ]);
     const user = userEvent.setup();
+    let landed = '';
     render(
       <MemoryRouter initialEntries={['/calc/m1']}>
-        <Routes><Route path="/calc/:medId" element={<SpeciesAndWeight />} /></Routes>
+        <Routes>
+          <Route path="/calc/:medId" element={<SpeciesAndWeight />} />
+          <Route path="/calc/:medId/:speciesId/:weight" element={<UrlCapture onUrl={u => { landed = u; }} />} />
+        </Routes>
       </MemoryRouter>
     );
     await waitFor(() => screen.getByText('Red-tailed Hawk'));
     await user.click(screen.getByText('Red-tailed Hawk'));
+    await screen.findByText('Meloxicam'); // med chip: med has loaded
+    await user.type(await screen.findByLabelText(/weight/i), '1');
     expect(screen.queryByLabelText(/concentration/i)).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /calculate/i }));
+    await waitFor(() => expect(landed).toBe('/calc/m1/s1/1'));
+  });
+
+  it('keeps Calculate disabled while the med is still loading', async () => {
+    const { listMedications } = await import('../../firebase/repos');
+    (listMedications as any).mockReturnValueOnce(new Promise(() => {}));
+    render(
+      <MemoryRouter initialEntries={['/calc/m1?species=s1&weight=1']}>
+        <Routes><Route path="/calc/:medId" element={<SpeciesAndWeight />} /></Routes>
+      </MemoryRouter>
+    );
+    await screen.findByText('Red-tailed Hawk');
+    expect(screen.getByRole('button', { name: /calculate/i })).toBeDisabled();
   });
 
   it('shows the product instead of a picker for ml meds', async () => {
