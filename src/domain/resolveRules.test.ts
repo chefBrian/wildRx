@@ -9,9 +9,9 @@ const redTail: Species = {
 
 const base: Omit<DosingRule, 'id' | 'target'> = {
   medicationId: 'm1',
-  mgPerKg: { min: 0.1, max: 0.5, typical: 0.2 },
+  dosePerKg: { min: 0.1, max: 0.5, typical: 0.2 },
   route: 'PO', frequency: 'q24h', durationDays: null,
-  maxSingleDoseMg: null, contraindications: [], notes: '',
+  maxSingleDose: null, contraindications: [], notes: '',
   updatedAt: 0, updatedBy: '',
 };
 
