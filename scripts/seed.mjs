@@ -215,7 +215,7 @@ const medications = [
     genericName: 'Enrofloxacin',
     doseUnit: 'mg',
     concentrations: [
-      { id: 'oral-22.7', value: 22.7, form: 'oral', note: 'Baytril' },
+      { id: 'inj-22.7', value: 22.7, form: 'injectable', note: 'Baytril - often given by mouth' },
       { id: 'inj-100', value: 100, form: 'injectable' },
     ],
     defaultRoute: 'PO',
