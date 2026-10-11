@@ -3,7 +3,10 @@ service cloud.firestore {
   match /databases/{database}/documents {
     match /medications/{id} {
       allow read: if true;
-      allow write: if request.auth != null;
+      allow create, update: if request.auth != null
+        && request.resource.data.doseUnit in ['mg', 'IU', 'ml']
+        && request.resource.data.concentrations is list;
+      allow delete: if request.auth != null;
     }
     match /species/{id} {
       allow read: if true;
@@ -11,7 +14,10 @@ service cloud.firestore {
     }
     match /dosingRules/{id} {
       allow read: if true;
-      allow write: if request.auth != null;
+      allow create, update: if request.auth != null
+        && request.resource.data.dosePerKg is map
+        && !request.resource.data.keys().hasAny(['mgPerKg', 'maxSingleDoseMg']);
+      allow delete: if request.auth != null;
     }
   }
 }

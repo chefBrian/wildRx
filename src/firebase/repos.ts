@@ -1,10 +1,19 @@
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from './client';
 import type { Medication, Species, DosingRule } from '../domain/types';
+import { isCurrentMedicationShape, assertRuleShape } from './schemaGuard';
 
 export async function listMedications(): Promise<Medication[]> {
   const snap = await getDocs(collection(db, 'medications'));
-  return snap.docs.map(d => ({ id: d.id, ...(d.data() as Omit<Medication, 'id'>) }));
+  return snap.docs.flatMap(d => {
+    const data = d.data();
+    if (!isCurrentMedicationShape(data)) {
+      // Hide rather than fail the whole list: a missing med is safe, a dead calculator isn't.
+      console.warn(`Skipping old-shape medication ${d.id}`);
+      return [];
+    }
+    return [{ id: d.id, ...(data as Omit<Medication, 'id'>) }];
+  });
 }
 
 export async function listSpecies(): Promise<Species[]> {
@@ -15,7 +24,12 @@ export async function listSpecies(): Promise<Species[]> {
 export async function listDosingRulesForMed(medId: string): Promise<DosingRule[]> {
   const q = query(collection(db, 'dosingRules'), where('medicationId', '==', medId));
   const snap = await getDocs(q);
-  return snap.docs.map(d => ({ id: d.id, ...(d.data() as Omit<DosingRule, 'id'>) }));
+  // Throw, never skip: dropping one species rule would silently surface the group rule.
+  return snap.docs.map(d => {
+    const data = d.data();
+    assertRuleShape(d.id, data);
+    return { id: d.id, ...(data as Omit<DosingRule, 'id'>) };
+  });
 }
 
 import { doc, setDoc, deleteDoc } from 'firebase/firestore';
