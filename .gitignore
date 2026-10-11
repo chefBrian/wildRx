@@ -39,3 +39,6 @@ coverage/
 
 # Docs (local-only)
 docs/
+
+# Migration backups (contain prod data)
+backups/

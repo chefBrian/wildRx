@@ -20,6 +20,8 @@ describe('parseForm', () => {
     ['15 mg/ml concentrated (OP toxicity)', 'other'],
     ['50mg/ml', 'other'],
     ['', 'other'],
+    ['0.3% ophthalmic solution', 'other'],
+    ['otic suspension', 'other'],
   ])('%j → %s', (label, form) => {
     expect(parseForm(label)).toBe(form);
   });
@@ -124,12 +126,58 @@ describe('migrateMedication', () => {
   it('skips already-migrated docs', () => {
     expect(migrateMedication({ name: 'x', doseUnit: 'mg', concentrations: [] }, makeId)).toBeNull();
   });
+
+  it('keeps unrelated fields and writes no undefined values', () => {
+    const r = migrateMedication({
+      name: 'Meloxicam',
+      genericName: 'Meloxicam',
+      notes: 'NSAID.',
+      defaultRoute: 'PO',
+      concentrations: [
+        { label: '1.5 mg/ml oral suspension (Metacam)', mgPerMl: 1.5 },
+        { label: '5 mg/ml injectable', mgPerMl: 5 },
+      ],
+    }, makeId);
+    expect(r.data).toMatchObject({ name: 'Meloxicam', genericName: 'Meloxicam', notes: 'NSAID.', defaultRoute: 'PO' });
+    expect(hasUndefined(r.data)).toBe(false);
+  });
 });
 
 describe('migrateRule', () => {
   it('renames dose fields and drops the old ones', () => {
     const r = migrateRule({ medicationId: 'm', mgPerKg: { min: 1, typical: 2, max: 3 }, maxSingleDoseMg: 5 });
     expect(r).toEqual({ medicationId: 'm', dosePerKg: { min: 1, typical: 2, max: 3 }, maxSingleDose: 5 });
+  });
+
+  it('keeps target, route, frequency, durations, contraindications, notes and audit fields', () => {
+    const r = migrateRule({
+      id: 'r1',
+      medicationId: 'm',
+      target: { type: 'group', value: 'raptor' },
+      mgPerKg: { min: 1, typical: 2, max: 3 },
+      route: 'PO',
+      frequency: 'q24h',
+      durationDays: { min: 1, max: 5 },
+      contraindications: ['Dehydration'],
+      maxSingleDoseMg: 50,
+      notes: 'n',
+      updatedAt: 1,
+      updatedBy: 'seed-script',
+    });
+    expect(r).toEqual({
+      id: 'r1',
+      medicationId: 'm',
+      target: { type: 'group', value: 'raptor' },
+      dosePerKg: { min: 1, typical: 2, max: 3 },
+      route: 'PO',
+      frequency: 'q24h',
+      durationDays: { min: 1, max: 5 },
+      contraindications: ['Dehydration'],
+      maxSingleDose: 50,
+      notes: 'n',
+      updatedAt: 1,
+      updatedBy: 'seed-script',
+    });
   });
 
   it('defaults a missing cap to null', () => {
@@ -168,3 +216,10 @@ describe('ruleFlags', () => {
     expect(ruleFlags({ ...ok, route: 'IM' }, undefined)).toEqual([]);
   });
 });
+
+function hasUndefined(value) {
+  if (value === undefined) return true;
+  if (Array.isArray(value)) return value.some(hasUndefined);
+  if (value && typeof value === 'object') return Object.values(value).some(hasUndefined);
+  return false;
+}

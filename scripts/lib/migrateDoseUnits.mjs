@@ -50,6 +50,8 @@ export function parseForm(label) {
   const l = label.toLowerCase();
   // "inject" first so "injectable suspension" stays injectable.
   if (l.includes('inject')) return 'injectable';
+  // Eye/ear products are not oral or topical in the app's form model.
+  if (/\b(ophthalmic|otic|eye|ear)\b/.test(l)) return 'other';
   if (/\b(oral|suspension|solution)\b/.test(l)) return 'oral';
   if (/\b(topical|ointment|cream)\b/.test(l)) return 'topical';
   // Includes "drops": could be eye or ear, so an admin must decide.
