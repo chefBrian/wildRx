@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   listMedications, listSpecies, listDosingRulesForMed,
   upsertDosingRule, deleteDosingRule,
@@ -58,6 +58,10 @@ export function RulesTab() {
   const [meds, setMeds] = useState<Medication[]>([]);
   const [species, setSpecies] = useState<Species[]>([]);
   const [medId, setMedId] = useState<string>('');
+  // Latest selected med, so a slow save/delete refresh can tell it went stale.
+  const medIdRef = useRef('');
+  // Bumped on every startEditing so the edit panel remounts with fresh field state.
+  const [editKey, setEditKey] = useState(0);
   const [rules, setRules] = useState<DosingRule[]>([]);
   const [editing, setEditing] = useState<DosingRule | null>(null);
   const [sampleWeight, setSampleWeight] = useState(1);
@@ -120,6 +124,7 @@ export function RulesTab() {
   function startEditing(rule: DosingRule | null) {
     setEditing(rule);
     setBadFields({});
+    setEditKey(k => k + 1);
   }
 
   function setDoseField(field: DoseField, v: number | null) {
@@ -141,16 +146,25 @@ export function RulesTab() {
   async function save() {
     if (!normalized || !user || Object.keys(ruleErrors).length > 0) return;
     const toSave = stamp(normalized, user.uid);
+    const savedFor = medId;
     await upsertDosingRule(toSave);
+    if (medIdRef.current !== savedFor) return;
     startEditing(null);
-    if (medId) setRules(await listDosingRulesForMed(medId));
+    await refreshRules(savedFor);
   }
 
   async function confirmDelete() {
     if (!pendingDelete) return;
+    const deletedFor = medId;
     await deleteDosingRule(pendingDelete.id);
     setPendingDelete(null);
-    if (medId) setRules(await listDosingRulesForMed(medId));
+    await refreshRules(deletedFor);
+  }
+
+  async function refreshRules(forMedId: string) {
+    if (!forMedId) return;
+    const rs = await listDosingRulesForMed(forMedId);
+    if (medIdRef.current === forMedId) setRules(rs);
   }
 
   function describeTarget(t: RuleTarget): string {
@@ -188,7 +202,7 @@ export function RulesTab() {
   function editPanel() {
     if (!editing) return null;
     return (
-      <div className="bg-surface border border-taupe rounded-md p-5 space-y-5">
+      <div key={editKey} className="bg-surface border border-taupe rounded-md p-5 space-y-5">
           <div className="text-[11px] uppercase tracking-[0.14em] text-ink2">
             {editing.id ? 'Edit rule' : 'New rule'}
           </div>
@@ -363,6 +377,7 @@ export function RulesTab() {
       <div>
         <label htmlFor="rule-med" className={eyebrowCls}>Medication</label>
         <select id="rule-med" className={inputCls} value={medId} onChange={e => {
+          medIdRef.current = e.target.value;
           setMedId(e.target.value);
           startEditing(null);
           setPickingTarget(false);

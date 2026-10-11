@@ -122,6 +122,35 @@ describe('RulesTab', () => {
     await user.selectOptions(screen.getByLabelText(/medication/i), 'other');
     expect(screen.queryByText('New rule')).not.toBeInTheDocument();
   });
+
+  it('ignores a save refresh that finishes after switching medications', async () => {
+    vi.mocked(repos.listMedications).mockResolvedValue([
+      { id: 'vita', name: 'Vitamin A', doseUnit: 'IU', concentrations: [] },
+      { id: 'other', name: 'Other', doseUnit: 'mg', concentrations: [] },
+    ] as Awaited<ReturnType<typeof repos.listMedications>>);
+    const otherRule: DosingRule = {
+      ...existingRule, id: 'other__group-raptor', medicationId: 'other',
+      target: { type: 'group', value: 'raptor' }, dosePerKg: { min: 5, typical: 5, max: 5 },
+    };
+    let resolveRefresh: (rs: DosingRule[]) => void = () => {};
+    const refresh = new Promise<DosingRule[]>(resolve => { resolveRefresh = resolve; });
+    let vitaCalls = 0;
+    vi.mocked(repos.listDosingRulesForMed).mockImplementation(async id => {
+      if (id === 'other') return [otherRule];
+      return ++vitaCalls === 1 ? [existingRule] : refresh;
+    });
+    const user = userEvent.setup();
+    await openExisting(user);
+    await user.click(screen.getByRole('button', { name: /save/i }));
+    await waitFor(() => expect(vitaCalls).toBe(2));
+    await user.selectOptions(screen.getByLabelText(/medication/i), 'other');
+    await waitFor(() => screen.getByText(/5 mg\/kg/));
+    resolveRefresh([existingRule]);
+    await refresh;
+    await new Promise(r => setTimeout(r, 0));
+    expect(screen.getByText(/5 mg\/kg/)).toBeInTheDocument();
+    expect(screen.queryByText(/1,000–2,000/)).not.toBeInTheDocument();
+  });
 });
 
 async function openExisting(user: ReturnType<typeof userEvent.setup>) {
