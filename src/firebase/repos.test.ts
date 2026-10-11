@@ -14,16 +14,18 @@ vi.mock('./client', () => ({ db: {} }));
 import { getDocs } from 'firebase/firestore';
 import { listMedications, listSpecies, listDosingRulesForMed } from './repos';
 import { SchemaMismatchError } from './schemaGuard';
+import type { QuerySnapshot } from 'firebase/firestore';
 
-const mockSnapshot = (docs: any[]) => ({
-  docs: docs.map(d => ({ id: d.id, data: () => d })),
-});
+const mockSnapshot = (docs: { id: string; [k: string]: unknown }[]) =>
+  ({
+    docs: docs.map(d => ({ id: d.id, data: () => d })),
+  }) as unknown as QuerySnapshot;
 
 beforeEach(() => vi.clearAllMocks());
 
 describe('repos', () => {
   it('listMedications returns mapped medications', async () => {
-    (getDocs as any).mockResolvedValueOnce(mockSnapshot([
+    vi.mocked(getDocs).mockResolvedValueOnce(mockSnapshot([
       { id: 'm1', name: 'Meloxicam', doseUnit: 'mg', concentrations: [] },
     ]));
     const res = await listMedications();
@@ -32,7 +34,7 @@ describe('repos', () => {
 
   it('listMedications skips old-shape meds and warns', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    (getDocs as any).mockResolvedValueOnce(mockSnapshot([
+    vi.mocked(getDocs).mockResolvedValueOnce(mockSnapshot([
       { id: 'old', name: 'Old', concentrations: [] },
       { id: 'm1', name: 'Meloxicam', doseUnit: 'mg', concentrations: [] },
     ]));
@@ -43,7 +45,7 @@ describe('repos', () => {
   });
 
   it('listSpecies returns mapped species', async () => {
-    (getDocs as any).mockResolvedValueOnce(mockSnapshot([
+    vi.mocked(getDocs).mockResolvedValueOnce(mockSnapshot([
       { id: 's1', commonName: 'Red-tailed Hawk', scientificName: 'Buteo jamaicensis',
         group: 'raptor', typicalWeightKg: { min: 0.7, max: 1.5 } },
     ]));
@@ -52,7 +54,7 @@ describe('repos', () => {
   });
 
   it('listDosingRulesForMed returns mapped rules', async () => {
-    (getDocs as any).mockResolvedValueOnce(mockSnapshot([
+    vi.mocked(getDocs).mockResolvedValueOnce(mockSnapshot([
       { id: 'r1', medicationId: 'm1', target: { type: 'group', value: 'raptor' },
         dosePerKg: { min: 0.1, max: 0.5, typical: 0.2 }, route: 'PO', frequency: 'q24h',
         durationDays: null, maxSingleDose: null, contraindications: [], notes: '',
@@ -63,7 +65,7 @@ describe('repos', () => {
   });
 
   it('listDosingRulesForMed rejects on an old-shape rule', async () => {
-    (getDocs as any).mockResolvedValueOnce(mockSnapshot([
+    vi.mocked(getDocs).mockResolvedValueOnce(mockSnapshot([
       { id: 'r1', medicationId: 'm1', target: { type: 'group', value: 'raptor' },
         mgPerKg: { min: 0.1, max: 0.5, typical: 0.2 }, route: 'PO', frequency: 'q24h' },
     ]));
@@ -77,21 +79,21 @@ import { setDoc, doc, deleteDoc } from 'firebase/firestore';
 describe('repos — writes', () => {
   it('upsertMedication writes by id', async () => {
     await upsertMedication({ id: 'm1', name: 'Meloxicam', doseUnit: 'mg', concentrations: [] });
-    expect((doc as any)).toHaveBeenCalledWith(expect.anything(), 'medications', 'm1');
-    expect((setDoc as any)).toHaveBeenCalled();
+    expect(doc).toHaveBeenCalledWith(expect.anything(), 'medications', 'm1');
+    expect(setDoc).toHaveBeenCalled();
   });
   it('deleteMedication deletes by id', async () => {
     await deleteMedication('m1');
-    expect((deleteDoc as any)).toHaveBeenCalled();
+    expect(deleteDoc).toHaveBeenCalled();
   });
   // Equivalent tests for species + dosingRules
   it('upsertSpecies works', async () => {
     await upsertSpecies({ id: 's1', commonName: 'X', scientificName: 'Y', group: 'raptor', typicalWeightKg: { min: 0.001, max: 0.002 } });
-    expect((setDoc as any)).toHaveBeenCalled();
+    expect(setDoc).toHaveBeenCalled();
   });
   it('deleteSpecies deletes by id', async () => {
     await deleteSpecies('s1');
-    expect((deleteDoc as any)).toHaveBeenCalled();
+    expect(deleteDoc).toHaveBeenCalled();
   });
   it('upsertDosingRule works', async () => {
     await upsertDosingRule({
@@ -100,10 +102,10 @@ describe('repos — writes', () => {
       durationDays: null, maxSingleDose: null, contraindications: [], notes: '',
       updatedAt: 0, updatedBy: '',
     });
-    expect((setDoc as any)).toHaveBeenCalled();
+    expect(setDoc).toHaveBeenCalled();
   });
   it('deleteDosingRule deletes by id', async () => {
     await deleteDosingRule('r1');
-    expect((deleteDoc as any)).toHaveBeenCalled();
+    expect(deleteDoc).toHaveBeenCalled();
   });
 });

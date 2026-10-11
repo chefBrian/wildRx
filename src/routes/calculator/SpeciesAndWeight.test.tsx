@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { describe, it, expect, vi } from 'vitest';
 import { SpeciesAndWeight } from './SpeciesAndWeight';
+import type { Concentration } from '../../domain/types';
 
 function UrlCapture({ onUrl }: { onUrl: (u: string) => void }) {
   const loc = useLocation();
@@ -37,14 +38,14 @@ describe('SpeciesAndWeight', () => {
     expect((weight as HTMLInputElement).value).toBe('1');
   });
 
-  const twoConcs = [
+  const twoConcs: Concentration[] = [
     { id: 'oral', value: 1.5, form: 'oral', note: 'Metacam' },
     { id: 'inj', value: 5, form: 'injectable' },
   ];
 
   async function withTwoConcs() {
     const { listMedications } = await import('../../firebase/repos');
-    (listMedications as any).mockResolvedValueOnce([
+    vi.mocked(listMedications).mockResolvedValueOnce([
       { id: 'm1', name: 'Meloxicam', doseUnit: 'mg', concentrations: twoConcs },
     ]);
   }
@@ -143,7 +144,7 @@ describe('SpeciesAndWeight', () => {
 
   it('skips the concentration picker when the med has one concentration', async () => {
     const { listMedications } = await import('../../firebase/repos');
-    (listMedications as any).mockResolvedValueOnce([
+    vi.mocked(listMedications).mockResolvedValueOnce([
       { id: 'm1', name: 'Meloxicam', doseUnit: 'mg', concentrations: [{ id: 'only', value: 1, form: 'oral' }] },
     ]);
     const user = userEvent.setup();
@@ -167,7 +168,7 @@ describe('SpeciesAndWeight', () => {
 
   it('keeps Calculate disabled while the med is still loading', async () => {
     const { listMedications } = await import('../../firebase/repos');
-    (listMedications as any).mockReturnValueOnce(new Promise(() => {}));
+    vi.mocked(listMedications).mockReturnValueOnce(new Promise(() => {}));
     render(
       <MemoryRouter initialEntries={['/calc/m1?species=s1&weight=1']}>
         <Routes><Route path="/calc/:medId" element={<SpeciesAndWeight />} /></Routes>
@@ -179,7 +180,7 @@ describe('SpeciesAndWeight', () => {
 
   it('shows the product instead of a picker for ml meds', async () => {
     const { listMedications } = await import('../../firebase/repos');
-    (listMedications as any).mockResolvedValueOnce([
+    vi.mocked(listMedications).mockResolvedValueOnce([
       { id: 'm1', name: 'Pepto-Bismol', doseUnit: 'ml', concentrations: [],
         productDescription: 'Pepto-Bismol Original (17.5 mg/ml)' },
     ]);

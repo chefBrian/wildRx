@@ -2,6 +2,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { MedsTab } from './MedsTab';
+import type { DosingRule, Medication } from '../../domain/types';
 
 vi.mock('../../firebase/repos', () => ({
   listMedications: vi.fn(),
@@ -10,16 +11,16 @@ vi.mock('../../firebase/repos', () => ({
   deleteMedication: vi.fn().mockResolvedValue(undefined),
 }));
 
-const meloxicam = {
+const meloxicam: Medication = {
   id: 'm1', name: 'Meloxicam', doseUnit: 'mg',
   concentrations: [{ id: 'c1', value: 1.5, form: 'oral' }],
 };
 
 beforeEach(async () => {
   const repos = await import('../../firebase/repos');
-  (repos.listMedications as any).mockResolvedValue([meloxicam]);
-  (repos.listDosingRulesForMed as any).mockResolvedValue([]);
-  (repos.upsertMedication as any).mockClear();
+  vi.mocked(repos.listMedications).mockResolvedValue([meloxicam]);
+  vi.mocked(repos.listDosingRulesForMed).mockResolvedValue([]);
+  vi.mocked(repos.upsertMedication).mockClear();
 });
 
 describe('MedsTab', () => {
@@ -100,7 +101,7 @@ describe('MedsTab', () => {
 
   it('locks the unit when the med has rules', async () => {
     const repos = await import('../../firebase/repos');
-    (repos.listDosingRulesForMed as any).mockResolvedValue([{ id: 'r1' }, { id: 'r2' }]);
+    vi.mocked(repos.listDosingRulesForMed).mockResolvedValue([{ id: 'r1' }, { id: 'r2' }] as DosingRule[]);
     const user = userEvent.setup();
     render(<MedsTab />);
     await waitFor(() => screen.getByText('Meloxicam'));
@@ -111,7 +112,7 @@ describe('MedsTab', () => {
 
   it('keeps the unit locked while the rule count is still loading', async () => {
     const repos = await import('../../firebase/repos');
-    (repos.listDosingRulesForMed as any).mockReturnValue(new Promise(() => {})); // never resolves
+    vi.mocked(repos.listDosingRulesForMed).mockReturnValue(new Promise(() => {})); // never resolves
     const user = userEvent.setup();
     render(<MedsTab />);
     await waitFor(() => screen.getByText('Meloxicam'));
@@ -122,7 +123,7 @@ describe('MedsTab', () => {
 
   it('shows a failure message and keeps the unit locked when the rule lookup fails', async () => {
     const repos = await import('../../firebase/repos');
-    (repos.listDosingRulesForMed as any).mockRejectedValue(new Error('schema mismatch'));
+    vi.mocked(repos.listDosingRulesForMed).mockRejectedValue(new Error('schema mismatch'));
     const user = userEvent.setup();
     render(<MedsTab />);
     await waitFor(() => screen.getByText('Meloxicam'));

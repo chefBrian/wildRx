@@ -35,7 +35,8 @@ export async function listDosingRulesForMed(medId: string): Promise<DosingRule[]
 import { doc, setDoc, deleteDoc } from 'firebase/firestore';
 
 function stripId<T extends { id: string }>(o: T): Omit<T, 'id'> {
-  const { id: _ignored, ...rest } = o;
+  const { id, ...rest } = o;
+  void id;
   return rest;
 }
 
