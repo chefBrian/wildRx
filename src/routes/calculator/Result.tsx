@@ -1,13 +1,19 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { listMedications, listSpecies, listDosingRulesForMed } from '../../firebase/repos';
+import { SchemaMismatchError } from '../../firebase/schemaGuard';
 import { resolveRules, type ResolvedRule } from '../../domain/resolveRules';
 import { calculateDose } from '../../domain/dose';
-import { formatNumber, formatWeight, formatWeightShort } from '../../domain/format';
+import { resolveConcentration } from '../../domain/concentrations';
+import { doseWarnings } from '../../domain/warnings';
+import {
+  formatConcentration, formatNumber, formatRange, formatWeight, formatWeightShort, isRange,
+} from '../../domain/format';
 import { plainFrequency } from '../../domain/frequency';
 import { WizardHeader, type WizardChip } from '../../components/WizardHeader';
 import { InfoIcon } from '../../components/InfoIcon';
-import type { Medication, Route, Species } from '../../domain/types';
+import { SchemaMismatchNotice } from '../../components/SchemaMismatchNotice';
+import type { DoseUnit, Medication, Route, Species } from '../../domain/types';
 
 const ROUTE_PLAIN: Record<Route, string> = {
   PO: 'By mouth',
@@ -27,26 +33,27 @@ function buildMathLine(args: {
   rate: number;
   weightKg: number;
   rawDoseTypical: number;
-  capMg: number | null;
-  cappedByMaxDose: boolean;
-  concMgPerMl: number | null;
+  unit: DoseUnit;
+  cap: number | null;
+  typicalCapped: boolean;
+  concValue: number | null;
   volumeTypical: number | null;
 }): ReactNode {
-  const { rate, weightKg, rawDoseTypical, capMg, cappedByMaxDose, concMgPerMl, volumeTypical } = args;
+  const { rate, weightKg, rawDoseTypical, unit, cap, typicalCapped, concValue, volumeTypical } = args;
   return (
     <>
-      <span className="text-ink">{formatNumber(rate)}</span> mg/kg
+      <span className="text-ink">{formatNumber(rate)}</span> {unit}/kg
       <span className="mx-1.5">×</span>
       <span className="text-ink">{formatNumber(weightKg)}</span> kg
       <span className="mx-1.5">=</span>
-      <span className="text-ink">{formatNumber(rawDoseTypical)}</span> mg
-      {cappedByMaxDose && capMg !== null && (
-        <span className="ml-1.5 text-ember-700">→ capped at {capMg} mg</span>
+      <span className="text-ink">{formatNumber(rawDoseTypical)}</span> {unit}
+      {typicalCapped && cap !== null && (
+        <span className="ml-1.5 text-ember-700">→ capped at {formatNumber(cap)} {unit}</span>
       )}
-      {concMgPerMl !== null && volumeTypical !== null && (
+      {unit !== 'ml' && concValue !== null && volumeTypical !== null && (
         <>
           <span className="mx-1.5">÷</span>
-          <span className="text-ink">{formatNumber(concMgPerMl)}</span> mg/ml
+          <span className="text-ink">{formatNumber(concValue)}</span> {unit}/ml
           <span className="mx-1.5">=</span>
           <span className="text-ink">{formatNumber(volumeTypical)}</span> ml
         </>
@@ -78,21 +85,28 @@ export function Result() {
   const [routeIdx, setRouteIdx] = useState(0);
   const [copied, setCopied] = useState(false);
   const [searchParams] = useSearchParams();
-  const concIdx = (() => {
-    const raw = searchParams.get('conc');
-    const n = raw === null ? 0 : Number(raw);
-    return Number.isFinite(n) && n >= 0 ? n : 0;
-  })();
+  const [schemaMismatch, setSchemaMismatch] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     async function load() {
       setLoading(true);
-      const [meds, allSpecies, rules] = await Promise.all([
-        listMedications(),
-        listSpecies(),
-        listDosingRulesForMed(medId),
-      ]);
+      let meds: Medication[], allSpecies: Species[], rules: Awaited<ReturnType<typeof listDosingRulesForMed>>;
+      try {
+        [meds, allSpecies, rules] = await Promise.all([
+          listMedications(),
+          listSpecies(),
+          listDosingRulesForMed(medId),
+        ]);
+      } catch (err) {
+        if (cancelled) return;
+        if (err instanceof SchemaMismatchError) {
+          setSchemaMismatch(true);
+          setLoading(false);
+          return;
+        }
+        throw err;
+      }
       if (cancelled) return;
       const m = meds.find(x => x.id === medId) ?? null;
       const s = allSpecies.find(x => x.id === speciesId) ?? null;
@@ -111,21 +125,20 @@ export function Result() {
     return () => { cancelled = true; };
   }, [medId, speciesId]);
 
-  const stepTwoBack = `/calc/${medId}?species=${speciesId}&weight=${weightValid ? weight : ''}${searchParams.get('conc') !== null ? `&conc=${searchParams.get('conc')}` : ''}`;
+  const concParam = searchParams.get('conc');
+  const stepTwoBase = `/calc/${medId}?species=${speciesId}&weight=${weightValid ? weight : ''}`;
+  const stepTwoBack = concParam !== null ? `${stepTwoBase}&conc=${encodeURIComponent(concParam)}` : stepTwoBase;
   const chips: WizardChip[] = med && species ? [
     { label: med.name, sublabel: med.genericName, to: '/' },
     { label: species.commonName, sublabel: weightValid ? formatWeightShort(weightKg) : '—', to: stepTwoBack },
   ] : [];
 
   const rule = matched[Math.min(routeIdx, Math.max(matched.length - 1, 0))];
-  const concentration = med?.concentrations[concIdx];
+  const concChoice = med ? resolveConcentration(med, concParam) : { status: 'none' as const };
+  const concentration = concChoice.status === 'selected' ? concChoice.concentration : undefined;
   const result = useMemo(() => {
-    if (!rule || !weightValid) return null;
-    return calculateDose({
-      weightKg,
-      rule,
-      concentration: med && med.concentrations.length > 0 ? concentration : undefined,
-    });
+    if (!rule || !weightValid || !med) return null;
+    return calculateDose({ weightKg, rule, doseUnit: med.doseUnit, concentration });
   }, [rule, weightKg, weightValid, med, concentration]);
 
   if (loading) {
@@ -140,6 +153,8 @@ export function Result() {
     );
   }
 
+  if (schemaMismatch) return <SchemaMismatchNotice />;
+
   if (!med || !species) {
     return (
       <main className="mx-auto max-w-md px-5 pt-10 pb-[max(3rem,env(safe-area-inset-bottom))]">
@@ -147,6 +162,10 @@ export function Result() {
       </main>
     );
   }
+
+  // Several concentrations and no valid ?conc id: never guess a strength - go pick.
+  // pick=1 tells step 2 to explain why the user is back.
+  if (concChoice.status === 'needsPick') return <Navigate to={`${stepTwoBase}&pick=1`} replace />;
 
   // Invalid weight – bounce the user back to step 2 with context.
   if (!weightValid) {
@@ -195,32 +214,44 @@ export function Result() {
     );
   }
 
-  const rate = rule.mgPerKg.typical;
+  const unit = med.doseUnit;
+  const rate = rule.dosePerKg.typical;
   const rawDoseTypical = weightKg * rate;
+  const warnings = doseWarnings({ result, rule, weightKg, concentration });
+  const volumeSubtitle = unit === 'ml'
+    ? med.productDescription ?? ''
+    : concentration ? formatConcentration(concentration, unit) : '';
 
   async function copySummary() {
     if (!med || !species || !rule || !result) return;
     const lines = [
       `${med.name}${med.genericName ? ` (${med.genericName})` : ''}`,
-      `Species: ${species.commonName}${species.scientificName ? ` — ${species.scientificName}` : ''}`,
+      `Species: ${species.commonName}${species.scientificName ? ` - ${species.scientificName}` : ''}`,
       `Weight: ${formatWeight(weightKg)}`,
-      `Dose: ${formatNumber(result.doseMg.typical)} mg  (range ${formatNumber(result.doseMg.min)}–${formatNumber(result.doseMg.max)} mg)`,
-      `Rate: ${formatNumber(rate)} mg/kg × ${formatNumber(weightKg)} kg`,
-      `Route: ${rule.route} (${ROUTE_PLAIN[rule.route]})`,
-      `Frequency: ${rule.frequency} — ${plainFrequency(rule.frequency)}`,
     ];
+    if (unit === 'ml') {
+      lines.push(`Product: ${med.productDescription ?? ''}`);
+    } else {
+      const range = isRange(result.dose.min, result.dose.max)
+        ? `  (range ${formatRange(result.dose.min, result.dose.max, unit)})`
+        : '';
+      lines.push(`Dose: ${formatNumber(result.dose.typical)} ${unit}${range}`);
+    }
+    lines.push(
+      `Rate: ${formatNumber(rate)} ${unit}/kg × ${formatNumber(weightKg)} kg`,
+      `Route: ${rule.route} (${ROUTE_PLAIN[rule.route]})`,
+      `Frequency: ${rule.frequency} - ${plainFrequency(rule.frequency)}`,
+    );
     if (rule.durationDays) lines.push(`Duration: ${plainDuration(rule.durationDays)}`);
-    if (result.cappedByMaxDose && rule.maxSingleDoseMg !== null) {
-      lines.push(`⚠ Capped at max single dose ${rule.maxSingleDoseMg} mg`);
+    if (result.volumeMl) {
+      lines.push(`Volume: ${formatNumber(result.volumeMl.typical)} ml${volumeSubtitle ? ` @ ${volumeSubtitle}` : ''}`);
     }
-    if (result.volumeMl && concentration) {
-      lines.push(`Volume: ${formatNumber(result.volumeMl.typical)} ml @ ${concentration.label}`);
-    }
+    for (const w of warnings) lines.push(`⚠ ${w.title}: ${w.body}`);
     if (rule.contraindications.length > 0) {
       lines.push(`Contraindications: ${rule.contraindications.join('; ')}`);
     }
     if (rule.notes) lines.push(`Notes: ${rule.notes}`);
-    lines.push('— Guidance only; cross-check with attending vet.');
+    lines.push('- Guidance only; cross-check with attending vet.');
     try {
       await navigator.clipboard.writeText(lines.join('\n'));
       setCopied(true);
@@ -308,35 +339,34 @@ export function Result() {
         </section>
       )}
 
-      {/* Max-cap banner */}
-      {result.cappedByMaxDose && rule.maxSingleDoseMg !== null && (
-        <div role="alert" className="mt-6 bg-ember-50 border-l-4 border-ember-600 px-5 py-4">
+      {warnings.map(w => (
+        <div key={w.kind} role="alert" className="mt-6 bg-ember-50 border-l-4 border-ember-600 px-5 py-4">
           <div className="flex items-center gap-2 text-ember-700">
             <WarningIcon className="w-4 h-4" />
             <span className="font-display text-[13px] font-semibold uppercase tracking-[0.1em]">
-              Capped at max single dose
+              {w.title}
             </span>
           </div>
-          <div className="text-[13px] text-ink mt-1">
-            Calculated {formatNumber(rawDoseTypical)} mg exceeded the {rule.maxSingleDoseMg} mg cap. Showing the capped value.
-          </div>
+          <div className="text-[13px] text-ink mt-1">{w.body}</div>
         </div>
-      )}
+      ))}
 
       {/* Volume hero — primary readout for staff. Falls back to dose hero when no concentration. */}
-      {med.concentrations.length > 0 && concentration && result.volumeMl ? (
+      {result.volumeMl ? (
         <section className="my-8 bg-cream px-6 py-6" aria-label="Volume">
           <div className="text-[11px] uppercase tracking-[0.14em] text-ink2">Volume</div>
-          <div className="mt-1 text-[13px] text-ink2">{concentration.label}</div>
+          {volumeSubtitle && <div className="mt-1 text-[13px] text-ink2">{volumeSubtitle}</div>}
           <output
             className="block font-display tabular-nums text-ink leading-none mt-4"
             style={{ fontSize: 'clamp(2.5rem, 11vw, 5rem)', fontVariationSettings: '"opsz" 144, "SOFT" 30' }}
           >
             {formatNumber(result.volumeMl.typical)}<span className="font-sans text-[0.3em] text-ink2 ml-2 align-baseline">ml</span>
           </output>
-          <div className="text-[13px] italic text-ink2 mt-2">
-            range {formatNumber(result.volumeMl.min)} – {formatNumber(result.volumeMl.max)} ml
-          </div>
+          {isRange(result.volumeMl.min, result.volumeMl.max) && (
+            <div className="text-[13px] italic text-ink2 mt-2">
+              range {formatRange(result.volumeMl.min, result.volumeMl.max, 'ml')}
+            </div>
+          )}
         </section>
       ) : (
         <section className="my-8 bg-cream px-6 py-6" aria-label="Dose">
@@ -346,11 +376,13 @@ export function Result() {
             className="block font-display tabular-nums text-ink leading-none mt-4"
             style={{ fontSize: 'clamp(2.5rem, 11vw, 5rem)', fontVariationSettings: '"opsz" 144, "SOFT" 30' }}
           >
-            {formatNumber(result.doseMg.typical)}<span className="font-sans text-[0.3em] text-ink2 ml-2 align-baseline">mg</span>
+            {formatNumber(result.dose.typical)}<span className="font-sans text-[0.3em] text-ink2 ml-2 align-baseline">{unit}</span>
           </output>
-          <div className="text-[13px] italic text-ink2 mt-2">
-            range {formatNumber(result.doseMg.min)} – {formatNumber(result.doseMg.max)} mg
-          </div>
+          {isRange(result.dose.min, result.dose.max) && (
+            <div className="text-[13px] italic text-ink2 mt-2">
+              range {formatRange(result.dose.min, result.dose.max, unit)}
+            </div>
+          )}
         </section>
       )}
 
@@ -360,9 +392,10 @@ export function Result() {
           rate,
           weightKg,
           rawDoseTypical,
-          capMg: rule.maxSingleDoseMg,
-          cappedByMaxDose: result.cappedByMaxDose,
-          concMgPerMl: concentration?.mgPerMl ?? null,
+          unit,
+          cap: rule.maxSingleDose,
+          typicalCapped: result.typicalCapped,
+          concValue: concentration?.value ?? null,
           volumeTypical: result.volumeMl?.typical ?? null,
         })}
       </div>
@@ -371,12 +404,23 @@ export function Result() {
       <section className="grid grid-cols-4 gap-3 my-10">
         <div>
           <div className="text-[11px] uppercase tracking-[0.14em] text-ink2">Dose</div>
-          <div className="font-display tabular-nums text-[18px] text-ink mt-1">
-            {formatNumber(result.doseMg.typical)} mg
-          </div>
-          <div className="text-[12px] text-ink2 mt-0.5">
-            range {formatNumber(result.doseMg.min)}–{formatNumber(result.doseMg.max)} mg
-          </div>
+          {unit === 'ml' ? (
+            <>
+              <div className="font-display tabular-nums text-[18px] text-ink mt-1">{formatNumber(rate)} ml/kg</div>
+              <div className="text-[12px] text-ink2 mt-0.5">Rate</div>
+            </>
+          ) : (
+            <>
+              <div className="font-display tabular-nums text-[18px] text-ink mt-1">
+                {formatNumber(result.dose.typical)} {unit}
+              </div>
+              {isRange(result.dose.min, result.dose.max) && (
+                <div className="text-[12px] text-ink2 mt-0.5">
+                  range {formatRange(result.dose.min, result.dose.max, unit)}
+                </div>
+              )}
+            </>
+          )}
         </div>
         <div>
           <div className="text-[11px] uppercase tracking-[0.14em] text-ink2">Route</div>
