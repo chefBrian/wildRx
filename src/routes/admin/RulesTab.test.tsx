@@ -87,6 +87,40 @@ describe('RulesTab', () => {
     await waitFor(() => screen.getByRole('option', { name: 'Vitamin A' }));
     await user.selectOptions(screen.getByLabelText(/medication/i), 'vita');
     expect(await screen.findByText(/rules in an old format/i)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /add rule/i })).not.toBeInTheDocument();
+    expect(screen.queryByText(/no rules yet/i)).not.toBeInTheDocument();
+  });
+
+  it('rejects unparseable Max instead of saving it as typical', async () => {
+    const user = userEvent.setup();
+    await openExisting(user);
+    await user.clear(screen.getByLabelText('Max'));
+    await user.type(screen.getByLabelText('Max'), '2,000');
+    expect(screen.getByText('Enter a plain number.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /save/i })).toBeDisabled();
+  });
+
+  it('rejects a negative Min', async () => {
+    const user = userEvent.setup();
+    await openExisting(user);
+    await user.clear(screen.getByLabelText('Min'));
+    await user.type(screen.getByLabelText('Min'), '-5');
+    expect(screen.getByRole('button', { name: /save/i })).toBeDisabled();
+  });
+
+  it('closes the edit panel when the medication changes', async () => {
+    vi.mocked(repos.listMedications).mockResolvedValue([
+      { id: 'vita', name: 'Vitamin A', doseUnit: 'IU', concentrations: [] },
+      { id: 'other', name: 'Other', doseUnit: 'mg', concentrations: [] },
+    ] as Awaited<ReturnType<typeof repos.listMedications>>);
+    const user = userEvent.setup();
+    render(<RulesTab />);
+    await waitFor(() => screen.getByRole('option', { name: 'Vitamin A' }));
+    await user.selectOptions(screen.getByLabelText(/medication/i), 'vita');
+    await user.click(await screen.findByRole('button', { name: /add rule/i }));
+    expect(screen.getByText('New rule')).toBeInTheDocument();
+    await user.selectOptions(screen.getByLabelText(/medication/i), 'other');
+    expect(screen.queryByText('New rule')).not.toBeInTheDocument();
   });
 });
 

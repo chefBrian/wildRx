@@ -25,6 +25,7 @@ const GROUPS: TaxonomicGroup[] = [
   'smallMammal', 'mediumMammal', 'largeMammal', 'reptile', 'amphibian', 'other',
 ];
 const ROUTES: DoseRoute[] = ['PO', 'IM', 'SC', 'IV', 'topical'];
+type DoseField = 'min' | 'typical' | 'max';
 const PREVIEW_TAGS: Record<DoseWarning['kind'], string> = {
   cap: 'capped',
   formRoute: 'not injectable',
@@ -63,6 +64,8 @@ export function RulesTab() {
   const [pickingTarget, setPickingTarget] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<DosingRule | null>(null);
   const [rulesError, setRulesError] = useState<string | null>(null);
+  // Fields where NumberField last reported unparseable text (NaN, as opposed to blank = null).
+  const [badFields, setBadFields] = useState<Partial<Record<DoseField, boolean>>>({});
   // freqMode is derived: an empty or non-canonical token = custom; otherwise preset.
   const freqMode: 'preset' | 'custom' =
     editing && editing.frequency && isCanonicalFrequency(editing.frequency)
@@ -75,18 +78,25 @@ export function RulesTab() {
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
     setRulesError(null);
     if (!medId) {
       setRules([]);
       return;
     }
     listDosingRulesForMed(medId)
-      .then(setRules)
+      .then(rs => {
+        if (!cancelled) setRules(rs);
+      })
       .catch(err => {
         if (!(err instanceof SchemaMismatchError)) throw err;
+        if (cancelled) return;
         setRules([]);
         setRulesError('This medication has rules in an old format. Fix or delete them in the Firebase console.');
       });
+    return () => {
+      cancelled = true;
+    };
   }, [medId]);
 
   const targetOptions: TypeaheadOption[] = useMemo(() => [
@@ -103,7 +113,20 @@ export function RulesTab() {
   const med = meds.find(m => m.id === medId);
   const unit = med?.doseUnit ?? 'mg';
   const normalized = editing ? normalizeRuleRange(editing) : null;
-  const ruleErrors = normalized ? validateRule(normalized) : {};
+  const ruleErrors: Record<string, string> = normalized
+    ? { ...validateRule(normalized), ...plainNumberErrors(badFields) }
+    : {};
+
+  function startEditing(rule: DosingRule | null) {
+    setEditing(rule);
+    setBadFields({});
+  }
+
+  function setDoseField(field: DoseField, v: number | null) {
+    if (!editing) return;
+    setEditing({ ...editing, dosePerKg: { ...editing.dosePerKg, [field]: v ?? NaN } });
+    setBadFields({ ...badFields, [field]: v !== null && Number.isNaN(v) });
+  }
 
   function setTargetFromOption(optId: string) {
     if (!editing) return;
@@ -119,7 +142,7 @@ export function RulesTab() {
     if (!normalized || !user || Object.keys(ruleErrors).length > 0) return;
     const toSave = stamp(normalized, user.uid);
     await upsertDosingRule(toSave);
-    setEditing(null);
+    startEditing(null);
     if (medId) setRules(await listDosingRulesForMed(medId));
   }
 
@@ -139,7 +162,7 @@ export function RulesTab() {
   function livePreview() {
     if (!normalized || !med) return null;
     const range = targetWeightRange(normalized.target, species);
-    const weights = range ? [range.min, range.max] : [sampleWeight];
+    const weights = range ? [...new Set([range.min, range.max])] : [sampleWeight];
     return (
       <div className="bg-moss-50 rounded-md p-4">
         <div className="text-[11px] uppercase tracking-[0.14em] text-moss-700 mb-2">
@@ -213,21 +236,21 @@ export function RulesTab() {
                 <label htmlFor="r-min" className={eyebrowCls}>Min</label>
                 <NumberField id="r-min" className={numInputCls} placeholder="= typical"
                   value={editing.dosePerKg.min}
-                  onValueChange={v => setEditing({ ...editing, dosePerKg: { ...editing.dosePerKg, min: v ?? NaN } })} />
+                  onValueChange={v => setDoseField('min', v)} />
                 {ruleErrors.min && <div className="mt-1 text-[12px] text-clay-700">{ruleErrors.min}</div>}
               </div>
               <div>
                 <label htmlFor="r-typ" className={eyebrowCls}>Typical</label>
                 <NumberField id="r-typ" className={numInputCls}
                   value={editing.dosePerKg.typical}
-                  onValueChange={v => setEditing({ ...editing, dosePerKg: { ...editing.dosePerKg, typical: v ?? NaN } })} />
+                  onValueChange={v => setDoseField('typical', v)} />
                 {ruleErrors.typical && <div className="mt-1 text-[12px] text-clay-700">{ruleErrors.typical}</div>}
               </div>
               <div>
                 <label htmlFor="r-max" className={eyebrowCls}>Max</label>
                 <NumberField id="r-max" className={numInputCls} placeholder="= typical"
                   value={editing.dosePerKg.max}
-                  onValueChange={v => setEditing({ ...editing, dosePerKg: { ...editing.dosePerKg, max: v ?? NaN } })} />
+                  onValueChange={v => setDoseField('max', v)} />
                 {ruleErrors.max && <div className="mt-1 text-[12px] text-clay-700">{ruleErrors.max}</div>}
               </div>
             </div>
@@ -324,7 +347,7 @@ export function RulesTab() {
               className="bg-moss-600 text-paper font-display font-semibold text-[14px] uppercase tracking-[0.08em] h-11 px-5 rounded-md hover:bg-moss-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
               Save
             </button>
-            <button type="button" onClick={() => setEditing(null)}
+            <button type="button" onClick={() => startEditing(null)}
               className="bg-surface text-ink2 border border-taupe font-sans text-[14px] h-11 px-5 rounded-md hover:bg-cream/50 transition-colors">
               Cancel
             </button>
@@ -339,7 +362,11 @@ export function RulesTab() {
     <div className="space-y-5">
       <div>
         <label htmlFor="rule-med" className={eyebrowCls}>Medication</label>
-        <select id="rule-med" className={inputCls} value={medId} onChange={e => setMedId(e.target.value)}>
+        <select id="rule-med" className={inputCls} value={medId} onChange={e => {
+          setMedId(e.target.value);
+          startEditing(null);
+          setPickingTarget(false);
+        }}>
           <option value="">— select —</option>
           {meds.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
         </select>
@@ -355,7 +382,7 @@ export function RulesTab() {
               disabled={!user}
               onClick={() => {
                 if (!user) return;
-                setEditing(blank(medId, user.uid));
+                startEditing(blank(medId, user.uid));
                 setPickingTarget(true);
               }}
               className="bg-moss-600 text-paper font-display font-semibold text-[14px] uppercase tracking-[0.08em] h-11 px-5 rounded-md hover:bg-moss-700 disabled:opacity-50 transition-colors"
@@ -366,7 +393,7 @@ export function RulesTab() {
 
           {isNew && editPanel()}
 
-          {rules.length === 0 && !isNew && (
+          {rules.length === 0 && !isNew && !rulesError && (
             <div className="bg-cream/60 border border-taupe/60 rounded-md px-5 py-8 text-center text-[14px] text-ink2">
               No rules yet for this medication. Tap <span className="text-ink font-medium">+ Add rule</span> to create the first one.
             </div>
@@ -396,7 +423,7 @@ export function RulesTab() {
                     </div>
                   </div>
                   <div className="flex gap-6 shrink-0">
-                    <button type="button" onClick={() => setEditing(r)} className="min-h-[44px] inline-flex items-center text-[12px] uppercase tracking-[0.1em] text-moss-700 underline underline-offset-4 decoration-1">Edit</button>
+                    <button type="button" onClick={() => startEditing(r)} className="min-h-[44px] inline-flex items-center text-[12px] uppercase tracking-[0.1em] text-moss-700 underline underline-offset-4 decoration-1">Edit</button>
                     <button type="button" onClick={() => setPendingDelete(r)} className="min-h-[44px] inline-flex items-center text-[12px] uppercase tracking-[0.1em] text-clay-700 underline underline-offset-4 decoration-1">Delete</button>
                   </div>
                 </li>
@@ -439,4 +466,12 @@ function tagsFor(result: DoseResult, rule: DosingRule, kg: number, concentration
 
 function stamp(rule: DosingRule, uid: string): DosingRule {
   return { ...rule, id: rule.id || crypto.randomUUID(), updatedAt: Date.now(), updatedBy: uid };
+}
+
+function plainNumberErrors(bad: Partial<Record<DoseField, boolean>>): Record<string, string> {
+  const errors: Record<string, string> = {};
+  for (const field of ['min', 'typical', 'max'] as const) {
+    if (bad[field]) errors[field] = 'Enter a plain number.';
+  }
+  return errors;
 }
