@@ -1,3 +1,5 @@
+import type { Concentration, DoseUnit } from './types';
+
 // Display formatters for clinical readouts.
 // Keep these pure so they're trivial to test.
 
@@ -64,4 +66,16 @@ export function formatWeight(kg: number): string {
 export function formatWeightShort(kg: number): string {
   if (!Number.isFinite(kg) || kg <= 0) return '—';
   return `${formatNumber(kg)} kg`;
+}
+
+/** "22.7 mg/ml · oral · Baytril" - strength is always generated from the number. */
+export function formatConcentration(c: Concentration, unit: DoseUnit): string {
+  const parts = [`${formatNumber(c.value)} ${unit}/ml`, c.form];
+  if (c.note) parts.push(c.note);
+  return parts.join(' · ');
+}
+
+/** Badge shown next to a medication name in search: mg, IU or ml/kg. */
+export function formatUnitBadge(unit: DoseUnit): string {
+  return unit === 'ml' ? 'ml/kg' : unit;
 }

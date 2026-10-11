@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { formatNumber, formatRange, isRange } from './format';
+import { formatConcentration, formatNumber, formatRange, formatUnitBadge, isRange } from './format';
 
 describe('formatNumber', () => {
   it.each([
@@ -64,5 +64,27 @@ describe('isRange', () => {
 
   it('is true when they differ', () => {
     expect(isRange(5, 10)).toBe(true);
+  });
+});
+
+describe('formatConcentration', () => {
+  it('renders strength, unit and form', () => {
+    expect(formatConcentration({ id: 'a', value: 22.7, form: 'oral' }, 'mg')).toBe('22.7 mg/ml · oral');
+  });
+
+  it('appends the note when present', () => {
+    expect(formatConcentration({ id: 'a', value: 22.7, form: 'oral', note: 'Baytril' }, 'mg'))
+      .toBe('22.7 mg/ml · oral · Baytril');
+  });
+
+  it('uses thousands separators for IU strengths', () => {
+    expect(formatConcentration({ id: 'a', value: 50000, form: 'injectable' }, 'IU'))
+      .toBe('50,000 IU/ml · injectable');
+  });
+});
+
+describe('formatUnitBadge', () => {
+  it.each([['mg', 'mg'], ['IU', 'IU'], ['ml', 'ml/kg']] as const)('%s → %s', (u, out) => {
+    expect(formatUnitBadge(u)).toBe(out);
   });
 });

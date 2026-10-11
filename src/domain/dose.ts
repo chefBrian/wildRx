@@ -1,39 +1,60 @@
-import type { DosingRule, Concentration } from './types';
+import type { DosingRule, Concentration, DoseUnit } from './types';
+
+export interface DoseTriple {
+  min: number;
+  typical: number;
+  max: number;
+}
 
 export interface CalculateDoseInput {
   weightKg: number;
   rule: DosingRule;
+  doseUnit: DoseUnit;
   concentration?: Concentration;
 }
 
 export interface DoseResult {
-  doseMg: { min: number; typical: number; max: number };
-  volumeMl?: { min: number; typical: number; max: number };
-  cappedByMaxDose: boolean;
+  dose: DoseTriple;           // in unit
+  unit: DoseUnit;
+  volumeMl?: DoseTriple;
+  cappedByMaxDose: boolean;   // any of min/typical/max was capped
+  typicalCapped: boolean;     // the typical value itself was capped
 }
 
 export function calculateDose(input: CalculateDoseInput): DoseResult {
-  const { weightKg, rule, concentration } = input;
+  const { weightKg, rule, doseUnit, concentration } = input;
   const raw = {
-    min: weightKg * rule.mgPerKg.min,
-    typical: weightKg * rule.mgPerKg.typical,
-    max: weightKg * rule.mgPerKg.max,
+    min: weightKg * rule.dosePerKg.min,
+    typical: weightKg * rule.dosePerKg.typical,
+    max: weightKg * rule.dosePerKg.max,
   };
-  const cap = rule.maxSingleDoseMg;
-  const cappedByMaxDose = cap !== null && raw.typical > cap;
-  const doseMg = cap === null
+  const cap = rule.maxSingleDose;
+  // Max of all three (not raw.max) so legacy rules with min > max still flag.
+  const cappedByMaxDose = cap !== null && Math.max(raw.min, raw.typical, raw.max) > cap;
+  const typicalCapped = cap !== null && raw.typical > cap;
+  const dose = cap === null
     ? raw
     : {
         min: Math.min(raw.min, cap),
         typical: Math.min(raw.typical, cap),
         max: Math.min(raw.max, cap),
       };
-  const volumeMl = concentration
-    ? {
-        min: doseMg.min / concentration.mgPerMl,
-        typical: doseMg.typical / concentration.mgPerMl,
-        max: doseMg.max / concentration.mgPerMl,
-      }
-    : undefined;
-  return { doseMg, volumeMl, cappedByMaxDose };
+  return {
+    dose,
+    unit: doseUnit,
+    volumeMl: volumeFor(dose, doseUnit, concentration),
+    cappedByMaxDose,
+    typicalCapped,
+  };
+}
+
+function volumeFor(dose: DoseTriple, unit: DoseUnit, concentration?: Concentration): DoseTriple | undefined {
+  // ml meds are dosed by volume: the dose is the volume.
+  if (unit === 'ml') return dose;
+  if (!concentration || !(concentration.value > 0)) return undefined;
+  return {
+    min: dose.min / concentration.value,
+    typical: dose.typical / concentration.value,
+    max: dose.max / concentration.value,
+  };
 }
