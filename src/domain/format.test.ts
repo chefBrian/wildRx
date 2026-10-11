@@ -1,0 +1,68 @@
+import { describe, it, expect } from 'vitest';
+import { formatNumber, formatRange, isRange } from './format';
+
+describe('formatNumber', () => {
+  it.each([
+    [0, '0'],
+    [5, '5'],
+    [2.5, '2.5'],
+    [24, '24'],
+    [24.31, '24.3'],
+    [2.414, '2.41'],
+    [0.2, '0.2'],
+    [0.241, '0.241'],
+    [0.0024, '0.0024'],
+    [0.0000031, '0.0000031'],
+    [0.00000031, '0.00000031'],
+    [240.4, '240'],
+    [10000, '10,000'],
+    [1234.4, '1,234'],
+    [999.6, '1,000'],
+    [-10000, '-10,000'],
+  ])('%s → %s', (n, out) => {
+    expect(formatNumber(n)).toBe(out);
+  });
+
+  it('never uses exponent notation', () => {
+    for (const n of [3.1e-7, 1e-9, 4.2e-12]) {
+      expect(formatNumber(n)).not.toMatch(/e/i);
+    }
+  });
+
+  it('keeps the leading zero', () => {
+    expect(formatNumber(0.5)).toBe('0.5');
+  });
+
+  it('never leaves a trailing zero after a decimal point', () => {
+    for (const n of [5, 24, 0.2, 2.5, 0.1, 10.1]) {
+      expect(formatNumber(n)).not.toMatch(/\.\d*0$/);
+    }
+  });
+
+  it('returns an em dash for non-finite input', () => {
+    expect(formatNumber(NaN)).toBe('—');
+    expect(formatNumber(Infinity)).toBe('—');
+  });
+});
+
+describe('formatRange', () => {
+  it('shows a single value when min and max display the same', () => {
+    expect(formatRange(5, 5, 'mg')).toBe('5 mg');
+    expect(formatRange(0.2001, 0.2002, 'ml')).toBe('0.2 ml');
+  });
+
+  it('shows min–max otherwise', () => {
+    expect(formatRange(5, 10, 'mg')).toBe('5–10 mg');
+  });
+});
+
+describe('isRange', () => {
+  it('is false when the displayed values match', () => {
+    expect(isRange(5, 5)).toBe(false);
+    expect(isRange(0.2001, 0.2002)).toBe(false);
+  });
+
+  it('is true when they differ', () => {
+    expect(isRange(5, 10)).toBe(true);
+  });
+});
