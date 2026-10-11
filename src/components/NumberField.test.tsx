@@ -4,21 +4,6 @@ import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi } from 'vitest';
 import { NumberField } from './NumberField';
 
-interface HarnessProps {
-  initial?: number | null;
-  onChange?: (v: number | null) => void;
-}
-
-function Harness({ initial = null, onChange }: HarnessProps) {
-  const [v, setV] = useState<number | null>(initial);
-  return (
-    <>
-      <NumberField aria-label="n" value={v} onValueChange={x => { setV(x); onChange?.(x); }} />
-      <button type="button" onClick={() => setV(42)}>set 42</button>
-    </>
-  );
-}
-
 describe('NumberField', () => {
   it.each(['0.05', '0.01', '0.3', '22.7', '50000'])('keeps %s exactly as typed and reports it', async typed => {
     const user = userEvent.setup();
@@ -57,3 +42,18 @@ describe('NumberField', () => {
     expect((screen.getByLabelText('n') as HTMLInputElement).value).toBe('42');
   });
 });
+
+interface HarnessProps {
+  initial?: number | null;
+  onChange?: (v: number | null) => void;
+}
+
+function Harness({ initial = null, onChange }: HarnessProps) {
+  const [v, setV] = useState<number | null>(initial);
+  return (
+    <>
+      <NumberField aria-label="n" value={v} onValueChange={x => { setV(x); onChange?.(x); }} />
+      <button type="button" onClick={() => setV(42)}>set 42</button>
+    </>
+  );
+}

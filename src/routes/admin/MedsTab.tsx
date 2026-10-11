@@ -31,6 +31,7 @@ export function MedsTab() {
   const [editing, setEditing] = useState<MedicationDraft | null>(null);
   // null = still counting. The unit select stays locked until the count says 0.
   const [ruleCount, setRuleCount] = useState<number | null>(0);
+  const [ruleCheckFailed, setRuleCheckFailed] = useState(false);
   const countingFor = useRef<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<Medication | null>(null);
 
@@ -44,6 +45,7 @@ export function MedsTab() {
   async function startEdit(m: Medication | null) {
     setEditing(m ?? blank);
     countingFor.current = m?.id ?? null;
+    setRuleCheckFailed(false);
     if (!m) {
       setRuleCount(0);
       return;
@@ -54,7 +56,8 @@ export function MedsTab() {
       // Ignore a late answer for a med the admin already navigated away from.
       if (countingFor.current === m.id) setRuleCount(n);
     } catch {
-      // Unknown count (e.g. old-shape rules) - leave the unit locked.
+      // Unknown count (e.g. old-shape rules) - leave the unit locked and say so.
+      if (countingFor.current === m.id) setRuleCheckFailed(true);
     }
   }
 
@@ -135,11 +138,14 @@ export function MedsTab() {
             disabled={ruleCount !== 0}
             onChange={e => setUnit(e.target.value === '' ? null : (e.target.value as DoseUnit))}
           >
-            <option value="">— choose —</option>
+            <option value="">Choose unit</option>
             {DOSE_UNITS.map(u => <option key={u} value={u}>{UNIT_LABELS[u]}</option>)}
           </select>
-          {ruleCount === null && (
+          {ruleCount === null && !ruleCheckFailed && (
             <div className="mt-1 text-[12px] italic text-ink2">Checking rules…</div>
+          )}
+          {ruleCount === null && ruleCheckFailed && (
+            <div className={errorCls}>Couldn't check rules - unit locked.</div>
           )}
           {ruleCount !== null && ruleCount > 0 && (
             <div className="mt-1 text-[12px] italic text-ink2">
@@ -193,7 +199,7 @@ export function MedsTab() {
                       onChange={e => updateConc(i, { form: e.target.value as ConcentrationDraft['form'] })}
                       className={inputCls + ' w-36'}
                     >
-                      <option value="">— form —</option>
+                      <option value="">Choose form</option>
                       {CONCENTRATION_FORMS.map(f => <option key={f} value={f}>{f}</option>)}
                     </select>
                     <input

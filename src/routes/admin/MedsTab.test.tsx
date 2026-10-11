@@ -22,20 +22,6 @@ beforeEach(async () => {
   (repos.upsertMedication as any).mockClear();
 });
 
-async function startNew(user: ReturnType<typeof userEvent.setup>) {
-  render(<MedsTab />);
-  await waitFor(() => screen.getByText('Meloxicam'));
-  await user.click(screen.getByText(/add medication/i));
-}
-
-async function addMgConcentration(user: ReturnType<typeof userEvent.setup>, strength: string) {
-  await user.type(screen.getByLabelText(/^name$/i), 'Amoxicillin');
-  await user.selectOptions(screen.getByLabelText(/dosed in/i), 'mg');
-  await user.click(screen.getByText(/add concentration/i));
-  if (strength) await user.type(screen.getByLabelText(/concentration 1 strength/i), strength);
-  await user.selectOptions(screen.getByLabelText(/concentration 1 form/i), 'oral');
-}
-
 describe('MedsTab', () => {
   it('lists meds with their unit badge', async () => {
     render(<MedsTab />);
@@ -133,4 +119,30 @@ describe('MedsTab', () => {
     expect(screen.getByLabelText(/dosed in/i)).toBeDisabled();
     expect(screen.getByText(/checking rules/i)).toBeInTheDocument();
   });
+
+  it('shows a failure message and keeps the unit locked when the rule lookup fails', async () => {
+    const repos = await import('../../firebase/repos');
+    (repos.listDosingRulesForMed as any).mockRejectedValue(new Error('schema mismatch'));
+    const user = userEvent.setup();
+    render(<MedsTab />);
+    await waitFor(() => screen.getByText('Meloxicam'));
+    await user.click(screen.getByRole('button', { name: /edit/i }));
+    await waitFor(() => expect(screen.getByText("Couldn't check rules - unit locked.")).toBeInTheDocument());
+    expect(screen.getByLabelText(/dosed in/i)).toBeDisabled();
+    expect(screen.queryByText(/checking rules/i)).not.toBeInTheDocument();
+  });
 });
+
+async function startNew(user: ReturnType<typeof userEvent.setup>) {
+  render(<MedsTab />);
+  await waitFor(() => screen.getByText('Meloxicam'));
+  await user.click(screen.getByText(/add medication/i));
+}
+
+async function addMgConcentration(user: ReturnType<typeof userEvent.setup>, strength: string) {
+  await user.type(screen.getByLabelText(/^name$/i), 'Amoxicillin');
+  await user.selectOptions(screen.getByLabelText(/dosed in/i), 'mg');
+  await user.click(screen.getByText(/add concentration/i));
+  if (strength) await user.type(screen.getByLabelText(/concentration 1 strength/i), strength);
+  await user.selectOptions(screen.getByLabelText(/concentration 1 form/i), 'oral');
+}
