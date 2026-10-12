@@ -100,7 +100,7 @@ export function SpeciesEditor({ species, allSpecies, meds, rules, onSaved, onCan
           id="sp-group"
           value={editing.group}
           onChange={e => setEditing({ ...editing, group: e.target.value as TaxonomicGroup })}
-          className="w-full h-10 rounded-md border border-taupe bg-paper px-3 text-[14px] text-ink focus:border-moss-600 focus:outline-none focus:ring-2 focus:ring-moss-600/20 transition-colors"
+          className="w-full h-10 rounded-md border border-taupe bg-paper pl-3 pr-9 text-[14px] text-ink focus:border-moss-600 focus:outline-none focus:ring-2 focus:ring-moss-600/20 transition-colors"
         >
           {GROUPS.map(g => (
             <option key={g} value={g}>

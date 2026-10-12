@@ -5,6 +5,7 @@ import NotFound from './routes/NotFound';
 import { MedList } from './routes/calculator/MedList';
 import { Result } from './routes/calculator/Result';
 import { LegacyResultRedirect, LegacyStepTwoRedirect } from './routes/calculator/LegacyRedirects';
+import { UpdateGate } from './pwa/UpdateGate';
 
 const AdminApp = lazy(() => import('./routes/admin/AdminApp'));
 const MedsRoutes = lazy(() => import('./routes/meds/MedsRoutes'));
@@ -26,30 +27,32 @@ const MedsFallback = () => (
 export default function App() {
   return (
     <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<CalculatorHome />} />
-        <Route path="/dose/:speciesId/:weight" element={<MedListRoute />} />
-        <Route path="/dose/:speciesId/:weight/:medId" element={<Result />} />
-        <Route
-          path="/meds/*"
-          element={
-            <Suspense fallback={<MedsFallback />}>
-              <MedsRoutes />
-            </Suspense>
-          }
-        />
-        <Route path="/calc/:medId" element={<LegacyStepTwoRedirect />} />
-        <Route path="/calc/:medId/:speciesId/:weight" element={<LegacyResultRedirect />} />
-        <Route
-          path="/admin/*"
-          element={
-            <Suspense fallback={<AdminFallback />}>
-              <AdminApp />
-            </Suspense>
-          }
-        />
-        <Route path="*" element={<NotFound />} />
-      </Routes>
+      <UpdateGate>
+        <Routes>
+          <Route path="/" element={<CalculatorHome />} />
+          <Route path="/dose/:speciesId/:weight" element={<MedListRoute />} />
+          <Route path="/dose/:speciesId/:weight/:medId" element={<Result />} />
+          <Route
+            path="/meds/*"
+            element={
+              <Suspense fallback={<MedsFallback />}>
+                <MedsRoutes />
+              </Suspense>
+            }
+          />
+          <Route path="/calc/:medId" element={<LegacyStepTwoRedirect />} />
+          <Route path="/calc/:medId/:speciesId/:weight" element={<LegacyResultRedirect />} />
+          <Route
+            path="/admin/*"
+            element={
+              <Suspense fallback={<AdminFallback />}>
+                <AdminApp />
+              </Suspense>
+            }
+          />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </UpdateGate>
     </BrowserRouter>
   );
 }

@@ -29,6 +29,7 @@ const PREVIEW_TAGS: Record<DoseWarning['kind'], string> = {
 
 const inputCls = 'w-full h-10 rounded-md border border-taupe bg-paper px-3 text-[14px] text-ink focus:border-moss-600 focus:outline-none focus:ring-2 focus:ring-moss-600/20 transition-colors';
 const numInputCls = inputCls + ' tabular-nums';
+const selectCls = inputCls + ' pr-9';
 const textareaCls = 'w-full min-h-[80px] py-2 rounded-md border border-taupe bg-paper px-3 text-[14px] text-ink focus:border-moss-600 focus:outline-none focus:ring-2 focus:ring-moss-600/20 transition-colors';
 const eyebrowCls = 'text-[11px] uppercase tracking-[0.14em] text-ink2 mb-1.5 block';
 const sectionEyebrowCls = 'text-[11px] uppercase tracking-[0.14em] text-ink2 mt-2 mb-2 block';
@@ -157,7 +158,7 @@ export function RuleEditor({ rule, meds, species, allRules, targetChoices, onSav
         {isNew ? (
           <>
             <label htmlFor="r-med" className={sectionEyebrowCls}>Medication</label>
-            <select id="r-med" className={inputCls} value={editing.medicationId}
+            <select id="r-med" className={selectCls} value={editing.medicationId}
               onChange={e => changeMed(e.target.value)}>
               {meds.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
             </select>
@@ -175,7 +176,7 @@ export function RuleEditor({ rule, meds, species, allRules, targetChoices, onSav
         {isNew && targetChoices.length > 1 ? (
           <>
             <label htmlFor="r-target" className={sectionEyebrowCls}>Applies to</label>
-            <select id="r-target" className={inputCls} value={targetKey(editing.target)}
+            <select id="r-target" className={selectCls} value={targetKey(editing.target)}
               onChange={e => {
                 const next = targetChoices.find(t => targetKey(t) === e.target.value);
                 if (next) setEditing({ ...editing, target: next });
@@ -242,7 +243,7 @@ export function RuleEditor({ rule, meds, species, allRules, targetChoices, onSav
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label htmlFor="r-route" className={eyebrowCls}>Route</label>
-            <select id="r-route" className={inputCls} value={editing.route}
+            <select id="r-route" className={selectCls} value={editing.route}
               onChange={e => setEditing({ ...editing, route: e.target.value as DoseRoute })}>
               {ROUTES.map(r => <option key={r} value={r}>{r}</option>)}
             </select>
@@ -252,7 +253,7 @@ export function RuleEditor({ rule, meds, species, allRules, targetChoices, onSav
             {freqMode === 'preset' ? (
               <select
                 id="r-freq"
-                className={inputCls}
+                className={selectCls}
                 value={isCanonicalFrequency(editing.frequency) ? editing.frequency.toLowerCase() : 'q24h'}
                 onChange={e => {
                   const v = e.target.value;

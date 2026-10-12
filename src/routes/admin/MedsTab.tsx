@@ -160,7 +160,7 @@ export function MedsTab() {
           <label htmlFor="med-unit" className={eyebrowCls}>Dosed in</label>
           <select
             id="med-unit"
-            className={inputCls + ' w-full'}
+            className={inputCls + ' w-full pr-9'}
             value={editing.doseUnit ?? ''}
             disabled={ruleCount !== 0}
             onChange={e => setUnit(e.target.value === '' ? null : (e.target.value as DoseUnit))}
@@ -222,7 +222,7 @@ export function MedsTab() {
                       aria-label={`Concentration ${i + 1} form`}
                       value={c.form}
                       onChange={e => updateConc(i, { form: e.target.value as ConcentrationDraft['form'] })}
-                      className={inputCls + ' w-36'}
+                      className={inputCls + ' w-36 pr-9'}
                     >
                       <option value="">Choose form</option>
                       {CONCENTRATION_FORMS.map(f => <option key={f} value={f}>{f}</option>)}

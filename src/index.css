@@ -6,6 +6,18 @@
 
 html, body, #root { height: 100%; }
 
+/* Native select arrows sit flush against the border in some browsers; draw our own chevron,
+   inset to match the px-3 text padding. Selects add pr-9 so text never runs under it. */
+@layer base {
+  select {
+    appearance: none;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'><path d='M1 1.5 6 6.5 11 1.5' fill='none' stroke='%235C544A' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    background-size: 0.75rem 0.5rem;
+  }
+}
+
 body {
   @apply bg-paper text-ink font-sans antialiased;
   background-image:

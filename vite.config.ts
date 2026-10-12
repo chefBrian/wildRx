@@ -7,6 +7,8 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
+      // Registered from src/pwa/register.ts so a new build can be swapped in on the next screen change.
+      injectRegister: false,
       manifest: {
         name: 'wildRx',
         short_name: 'wildRx',
@@ -21,14 +23,9 @@ export default defineConfig({
         ],
       },
       workbox: {
-        runtimeCaching: [{
-          urlPattern: /^https:\/\/firestore\.googleapis\.com\//,
-          handler: 'NetworkFirst',
-          options: {
-            cacheName: 'firestore',
-            expiration: { maxAgeSeconds: 60 * 60 * 24 },
-          },
-        }],
+        // The plugin only sets these itself with injectRegister 'auto'; a new build must take over at once.
+        skipWaiting: true,
+        clientsClaim: true,
       },
     }),
   ],
