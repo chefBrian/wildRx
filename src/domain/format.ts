@@ -79,3 +79,18 @@ export function formatConcentration(c: Concentration, unit: DoseUnit): string {
 export function formatUnitBadge(unit: DoseUnit): string {
   return unit === 'ml' ? 'ml/kg' : unit;
 }
+
+/** "1 day", "5 days", "5 to 7 days"; null when no duration is set. */
+export function plainDuration(d: { min: number; max: number } | null): string | null {
+  if (d === null) return null;
+  if (d.min === d.max) return d.min === 1 ? '1 day' : `${d.min} days`;
+  return `${d.min} to ${d.max} days`;
+}
+
+/** "0.2 mg/kg", or "1,000–2,000 IU/kg (typ 1,500)" for a range. */
+export function formatDosePerKg(d: { min: number; typical: number; max: number }, unit: DoseUnit): string {
+  const perKg = `${unit}/kg`;
+  return d.min === d.max
+    ? formatRange(d.typical, d.typical, perKg)
+    : `${formatRange(d.min, d.max, perKg)} (typ ${formatNumber(d.typical)})`;
+}

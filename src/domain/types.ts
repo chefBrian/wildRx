@@ -27,6 +27,9 @@ const GROUP_LABELS: Record<TaxonomicGroup, string> = {
   other: 'Other',
 };
 
+/** Every group, in display order. */
+export const GROUPS = Object.keys(GROUP_LABELS) as TaxonomicGroup[];
+
 export function formatGroup(g: TaxonomicGroup | string): string {
   return GROUP_LABELS[g as TaxonomicGroup] ?? g;
 }

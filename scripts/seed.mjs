@@ -20,6 +20,7 @@
 
 import { initializeApp, applicationDefault } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
+import { ruleId } from './lib/ruleId.mjs';
 
 const PROJECT_ID = 'wildrx';
 
@@ -349,18 +350,22 @@ const medications = [
 ];
 
 // ---------- DOSING RULES ----------
-const rule = (medId, target, body) => ({
-  id: `${medId}__${target.type}-${target.value}`,
-  medicationId: medId,
-  target,
-  ...body,
-  contraindications: body.contraindications ?? [],
-  durationDays: body.durationDays ?? null,
-  maxSingleDose: body.maxSingleDose ?? null,
-  notes: body.notes ?? '',
-  updatedAt: now,
-  updatedBy: SEED_BY,
-});
+// Ids come from scripts/lib/ruleId.mjs - same format the admin and firestore.rules use.
+const rule = (medId, target, body) => {
+  if (!body.route) throw new Error(`seed rule ${medId}/${target.value} has no route`);
+  return {
+    id: ruleId(medId, target, body.route),
+    medicationId: medId,
+    target,
+    ...body,
+    contraindications: body.contraindications ?? [],
+    durationDays: body.durationDays ?? null,
+    maxSingleDose: body.maxSingleDose ?? null,
+    notes: body.notes ?? '',
+    updatedAt: now,
+    updatedBy: SEED_BY,
+  };
+};
 
 const dosingRules = [
   // Meloxicam

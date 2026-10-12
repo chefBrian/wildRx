@@ -14,9 +14,18 @@ service cloud.firestore {
     }
     match /dosingRules/{id} {
       allow read: if true;
+      // The doc id must be `${medicationId}__${target.type}-${target.value}__${route}`
+      // (src/domain/ruleId.ts). Rejects random-UUID writes from old admin builds.
+      // Only stored DosingRule fields (no UI-only `source`, no old-shape fields).
       allow create, update: if request.auth != null
         && request.resource.data.dosePerKg is map
-        && !request.resource.data.keys().hasAny(['mgPerKg', 'maxSingleDoseMg']);
+        && !request.resource.data.keys().hasAny(['mgPerKg', 'maxSingleDoseMg'])
+        && request.resource.data.keys().hasOnly(['medicationId', 'target', 'dosePerKg', 'route',
+             'frequency', 'durationDays', 'maxSingleDose', 'contraindications', 'notes',
+             'updatedAt', 'updatedBy'])
+        && id == request.resource.data.medicationId + '__'
+             + request.resource.data.target.type + '-' + request.resource.data.target.value
+             + '__' + request.resource.data.route;
       allow delete: if request.auth != null;
     }
   }

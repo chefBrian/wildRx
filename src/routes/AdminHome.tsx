@@ -1,14 +1,14 @@
-import { Link, NavLink, Outlet } from 'react-router-dom';
+import { Link, Outlet, useLocation } from 'react-router-dom';
 import { signOut } from 'firebase/auth';
 import { auth } from '../firebase/auth';
 
-const TABS: Array<[string, string]> = [
-  ['', 'Meds'],
-  ['species', 'Species'],
-  ['rules', 'Rules'],
+const TABS: Array<{ to: string; label: string; match: (path: string) => boolean }> = [
+  { to: '/admin', label: 'Animals', match: p => p === '/admin' || p === '/admin/' || p.startsWith('/admin/animals') },
+  { to: '/admin/meds', label: 'Meds', match: p => p.startsWith('/admin/meds') },
 ];
 
 export default function AdminHome() {
+  const { pathname } = useLocation();
   return (
     <main className="mx-auto max-w-3xl px-5 pt-10 pb-[max(4rem,env(safe-area-inset-bottom))]">
       <header className="flex items-center justify-between gap-4">
@@ -37,21 +37,22 @@ export default function AdminHome() {
       </header>
 
       <nav className="mt-8 flex gap-2 border-b border-taupe">
-        {TABS.map(([to, label]) => (
-          <NavLink
-            key={to}
-            to={`/admin/${to}`}
-            end
-            className={({ isActive }) =>
-              'px-4 h-11 inline-flex items-center text-[13px] font-medium uppercase tracking-[0.1em] -mb-px border-b-2 transition-colors ' +
-              (isActive
-                ? 'border-moss-600 text-ink'
-                : 'border-transparent text-ink2 hover:text-ink')
-            }
-          >
-            {label}
-          </NavLink>
-        ))}
+        {TABS.map(tab => {
+          const active = tab.match(pathname);
+          return (
+            <Link
+              key={tab.to}
+              to={tab.to}
+              aria-current={active ? 'page' : undefined}
+              className={
+                'px-4 h-11 inline-flex items-center text-[13px] font-medium uppercase tracking-[0.1em] -mb-px border-b-2 transition-colors ' +
+                (active ? 'border-moss-600 text-ink' : 'border-transparent text-ink2 hover:text-ink')
+              }
+            >
+              {tab.label}
+            </Link>
+          );
+        })}
       </nav>
 
       <section className="mt-8">

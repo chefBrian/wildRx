@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { formatConcentration, formatNumber, formatRange, formatUnitBadge, isRange } from './format';
+import { formatConcentration, formatDosePerKg, formatNumber, formatRange, formatUnitBadge, isRange, plainDuration } from './format';
 
 describe('formatNumber', () => {
   it.each([
@@ -86,5 +86,23 @@ describe('formatConcentration', () => {
 describe('formatUnitBadge', () => {
   it.each([['mg', 'mg'], ['IU', 'IU'], ['ml', 'ml/kg']] as const)('%s → %s', (u, out) => {
     expect(formatUnitBadge(u)).toBe(out);
+  });
+});
+
+describe('plainDuration', () => {
+  it('formats single and ranged durations', () => {
+    expect(plainDuration(null)).toBeNull();
+    expect(plainDuration({ min: 1, max: 1 })).toBe('1 day');
+    expect(plainDuration({ min: 5, max: 5 })).toBe('5 days');
+    expect(plainDuration({ min: 5, max: 7 })).toBe('5 to 7 days');
+  });
+});
+
+describe('formatDosePerKg', () => {
+  it('shows one value when min equals max', () => {
+    expect(formatDosePerKg({ min: 0.2, typical: 0.2, max: 0.2 }, 'mg')).toBe('0.2 mg/kg');
+  });
+  it('shows the range and typical otherwise', () => {
+    expect(formatDosePerKg({ min: 1000, typical: 1500, max: 2000 }, 'IU')).toBe('1,000–2,000 IU/kg (typ 1,500)');
   });
 });

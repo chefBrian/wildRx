@@ -1,82 +1,28 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { listMedications, listSpecies, listDosingRulesForMed } from '../../firebase/repos';
+import { Link, Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { getPatientSnapshot, type PatientSnapshot } from './patientSnapshot';
 import { SchemaMismatchError } from '../../firebase/schemaGuard';
 import { resolveRules, type ResolvedRule } from '../../domain/resolveRules';
 import { calculateDose } from '../../domain/dose';
 import { resolveConcentration } from '../../domain/concentrations';
 import { doseWarnings } from '../../domain/warnings';
 import {
-  formatConcentration, formatNumber, formatRange, formatWeight, formatWeightShort, isRange,
+  formatConcentration, formatNumber, formatRange, formatWeight, formatWeightShort, isRange, plainDuration,
 } from '../../domain/format';
 import { plainFrequency } from '../../domain/frequency';
 import { WizardHeader, type WizardChip } from '../../components/WizardHeader';
 import { InfoIcon } from '../../components/InfoIcon';
 import { SchemaMismatchNotice } from '../../components/SchemaMismatchNotice';
-import type { DoseUnit, Medication, Route, Species } from '../../domain/types';
-
-const ROUTE_PLAIN: Record<Route, string> = {
-  PO: 'By mouth',
-  IM: 'Into muscle',
-  SC: 'Under skin',
-  IV: 'Into vein',
-  topical: 'On skin',
-};
-
-function plainDuration(d: { min: number; max: number } | null): string | null {
-  if (d === null) return null;
-  if (d.min === d.max) return d.min === 1 ? '1 day' : `${d.min} days`;
-  return `${d.min} to ${d.max} days`;
-}
-
-function buildMathLine(args: {
-  rate: number;
-  weightKg: number;
-  rawDoseTypical: number;
-  unit: DoseUnit;
-  cap: number | null;
-  typicalCapped: boolean;
-  concValue: number | null;
-  volumeTypical: number | null;
-}): ReactNode {
-  const { rate, weightKg, rawDoseTypical, unit, cap, typicalCapped, concValue, volumeTypical } = args;
-  return (
-    <>
-      <span className="text-ink">{formatNumber(rate)}</span> {unit}/kg
-      <span className="mx-1.5">×</span>
-      <span className="text-ink">{formatNumber(weightKg)}</span> kg
-      <span className="mx-1.5">=</span>
-      <span className="text-ink">{formatNumber(rawDoseTypical)}</span> {unit}
-      {typicalCapped && cap !== null && (
-        <span className="ml-1.5 text-ember-700">→ capped at {formatNumber(cap)} {unit}</span>
-      )}
-      {unit !== 'ml' && concValue !== null && volumeTypical !== null && (
-        <>
-          <span className="mx-1.5">÷</span>
-          <span className="text-ink">{formatNumber(concValue)}</span> {unit}/ml
-          <span className="mx-1.5">=</span>
-          <span className="text-ink">{formatNumber(volumeTypical)}</span> ml
-        </>
-      )}
-    </>
-  );
-}
-
-function WarningIcon({ className = '' }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden className={className} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 9v4" />
-      <path d="M12 17h.01" />
-      <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-    </svg>
-  );
-}
+import { ROUTE_PLAIN } from '../../domain/doseRoutes';
+import { parseWeightParam } from '../../domain/weight';
+import type { DoseUnit, Medication, Species } from '../../domain/types';
 
 export function Result() {
-  const { medId = '', speciesId = '', weight = '0' } = useParams();
+  const { speciesId = '', weight = '', medId = '' } = useParams();
   const nav = useNavigate();
-  const weightKg = Number(weight);
-  const weightValid = Number.isFinite(weightKg) && weightKg > 0;
+  const parsedWeight = parseWeightParam(weight);
+  const weightValid = parsedWeight !== null;
+  const weightKg = parsedWeight ?? 0;
 
   const [loading, setLoading] = useState(true);
   const [med, setMed] = useState<Medication | null>(null);
@@ -86,34 +32,31 @@ export function Result() {
   const [copied, setCopied] = useState(false);
   const [searchParams] = useSearchParams();
   const [schemaMismatch, setSchemaMismatch] = useState(false);
+  const [loadError, setLoadError] = useState(false);
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
     async function load() {
       setLoading(true);
-      let meds: Medication[], allSpecies: Species[], rules: Awaited<ReturnType<typeof listDosingRulesForMed>>;
+      setLoadError(false);
+      let snapshot: PatientSnapshot;
       try {
-        [meds, allSpecies, rules] = await Promise.all([
-          listMedications(),
-          listSpecies(),
-          listDosingRulesForMed(medId),
-        ]);
+        snapshot = await getPatientSnapshot();
       } catch (err) {
         if (cancelled) return;
-        if (err instanceof SchemaMismatchError) {
-          setSchemaMismatch(true);
-          setLoading(false);
-          return;
-        }
-        throw err;
+        if (err instanceof SchemaMismatchError) setSchemaMismatch(true);
+        else setLoadError(true);
+        setLoading(false);
+        return;
       }
       if (cancelled) return;
-      const m = meds.find(x => x.id === medId) ?? null;
-      const s = allSpecies.find(x => x.id === speciesId) ?? null;
+      const m = snapshot.meds.find(x => x.id === medId) ?? null;
+      const s = snapshot.species.find(x => x.id === speciesId) ?? null;
       setMed(m);
       setSpecies(s);
       if (m && s) {
-        const { matched } = resolveRules({ rules, species: s, medicationId: m.id });
+        const { matched } = resolveRules({ rules: snapshot.rules, species: s, medicationId: m.id });
         setMatched(matched);
       } else {
         setMatched([]);
@@ -123,14 +66,17 @@ export function Result() {
     }
     load();
     return () => { cancelled = true; };
-  }, [medId, speciesId]);
+  }, [medId, speciesId, attempt]);
 
   const concParam = searchParams.get('conc');
-  const stepTwoBase = `/calc/${medId}?species=${speciesId}&weight=${weightValid ? weight : ''}`;
-  const stepTwoBack = concParam !== null ? `${stepTwoBase}&conc=${encodeURIComponent(concParam)}` : stepTwoBase;
+  const enc = encodeURIComponent;
+  const patientLink = `/?species=${enc(speciesId)}&weight=${weightValid ? weightKg : ''}`;
+  const medListBase = `/dose/${enc(speciesId)}/${enc(weight)}`;
+  const needsBottle = !!med && resolveConcentration(med, null).status === 'needsPick';
+  const medListBack = needsBottle ? `${medListBase}?open=${enc(medId)}` : medListBase;
   const chips: WizardChip[] = med && species ? [
-    { label: med.name, sublabel: med.genericName, to: '/' },
-    { label: species.commonName, sublabel: weightValid ? formatWeightShort(weightKg) : '—', to: stepTwoBack },
+    { label: species.commonName, sublabel: weightValid ? formatWeightShort(weightKg) : '—', to: patientLink },
+    { label: med.name, sublabel: med.genericName, to: medListBack },
   ] : [];
 
   const rule = matched[Math.min(routeIdx, Math.max(matched.length - 1, 0))];
@@ -155,6 +101,24 @@ export function Result() {
 
   if (schemaMismatch) return <SchemaMismatchNotice />;
 
+  if (loadError) {
+    return (
+      <main className="mx-auto max-w-md px-5 pt-10 pb-[max(3rem,env(safe-area-inset-bottom))]">
+        <div role="alert" className="bg-clay-50 border-l-4 border-clay-600 px-5 py-4">
+          <div className="font-display text-[15px] font-semibold text-clay-700 uppercase tracking-[0.1em]">Couldn't load the dosing data</div>
+          <p className="text-[14px] text-ink mt-2">Check your connection and try again.</p>
+          <button
+            type="button"
+            onClick={() => setAttempt(a => a + 1)}
+            className="mt-4 h-11 px-5 bg-moss-600 text-paper font-display font-semibold text-[14px] uppercase tracking-[0.08em] rounded-md hover:bg-moss-700 transition-colors"
+          >
+            Try again
+          </button>
+        </div>
+      </main>
+    );
+  }
+
   if (!med || !species) {
     return (
       <main className="mx-auto max-w-md px-5 pt-10 pb-[max(3rem,env(safe-area-inset-bottom))]">
@@ -164,14 +128,14 @@ export function Result() {
   }
 
   // Several concentrations and no valid ?conc id: never guess a strength - go pick.
-  // pick=1 tells step 2 to explain why the user is back.
-  if (concChoice.status === 'needsPick') return <Navigate to={`${stepTwoBase}&pick=1`} replace />;
+  // pick=1 tells the med list to explain why the user is back.
+  if (concChoice.status === 'needsPick') return <Navigate to={`${medListBase}?open=${enc(medId)}&pick=1`} replace />;
 
-  // Invalid weight – bounce the user back to step 2 with context.
+  // Invalid weight – bounce the user back to the patient screen with context.
   if (!weightValid) {
     return (
       <main className="mx-auto max-w-md px-5 pb-[max(3rem,env(safe-area-inset-bottom))]">
-        <WizardHeader step={3} backTo={stepTwoBack} chips={chips} />
+        <WizardHeader step={3} backTo={patientLink} chips={chips} />
         <section className="pt-10">
           <div role="alert" className="bg-clay-50 border-l-4 border-clay-600 px-5 py-4">
             <div className="font-display text-[15px] font-semibold text-clay-700 uppercase tracking-[0.1em]">Weight missing</div>
@@ -179,7 +143,7 @@ export function Result() {
           </div>
           <button
             type="button"
-            onClick={() => nav(stepTwoBack)}
+            onClick={() => nav(patientLink)}
             className="mt-6 w-full h-14 bg-moss-600 text-paper font-display font-semibold text-[16px] uppercase tracking-[0.08em] rounded-md hover:bg-moss-700 transition-colors"
           >
             Enter weight
@@ -192,7 +156,7 @@ export function Result() {
   if (matched.length === 0 || !rule || !result) {
     return (
       <main className="mx-auto max-w-md px-5 pb-[max(3rem,env(safe-area-inset-bottom))]">
-        <WizardHeader step={3} backTo={stepTwoBack} chips={chips} />
+        <WizardHeader step={3} backTo={medListBack} chips={chips} />
         <section className="pt-10">
           <div className="space-y-2">
             <div className="text-[11px] uppercase tracking-[0.14em] text-ink2">Result</div>
@@ -204,10 +168,10 @@ export function Result() {
           </div>
           <button
             type="button"
-            onClick={() => nav('/')}
+            onClick={() => nav(medListBase)}
             className="mt-8 w-full h-14 bg-moss-600 text-paper font-display font-semibold text-[16px] uppercase tracking-[0.08em] rounded-md hover:bg-moss-700 transition-colors"
           >
-            New calculation
+            Back to med list
           </button>
         </section>
       </main>
@@ -266,7 +230,7 @@ export function Result() {
 
   return (
     <main className="mx-auto max-w-md px-5 pb-[max(4rem,env(safe-area-inset-bottom))]">
-      <WizardHeader step={3} backTo={stepTwoBack} chips={chips} />
+      <WizardHeader step={3} backTo={medListBack} chips={chips} />
 
       <div className="pt-6">
         <div
@@ -462,11 +426,19 @@ export function Result() {
         </button>
         <button
           type="button"
-          onClick={() => nav('/')}
-          className="h-12 bg-moss-600 text-paper font-display font-semibold text-[14px] uppercase tracking-[0.08em] rounded-md hover:bg-moss-700 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-moss-600"
+          onClick={() => nav(medListBase)}
+          className="h-12 bg-moss-600 text-paper font-display font-semibold text-[13px] uppercase tracking-[0.06em] rounded-md hover:bg-moss-700 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-moss-600"
         >
-          New calculation
+          Another med for this patient
         </button>
+      </div>
+      <div className="mt-4 text-center">
+        <Link
+          to="/"
+          className="min-h-[44px] inline-flex items-center text-[12px] uppercase tracking-[0.1em] text-moss-700 underline underline-offset-4 decoration-1"
+        >
+          New patient
+        </Link>
       </div>
 
       {/* Disclaimer */}
@@ -476,5 +448,48 @@ export function Result() {
         do not replace clinical judgment.
       </p>
     </main>
+  );
+}
+
+function buildMathLine(args: {
+  rate: number;
+  weightKg: number;
+  rawDoseTypical: number;
+  unit: DoseUnit;
+  cap: number | null;
+  typicalCapped: boolean;
+  concValue: number | null;
+  volumeTypical: number | null;
+}): ReactNode {
+  const { rate, weightKg, rawDoseTypical, unit, cap, typicalCapped, concValue, volumeTypical } = args;
+  return (
+    <>
+      <span className="text-ink">{formatNumber(rate)}</span> {unit}/kg
+      <span className="mx-1.5">×</span>
+      <span className="text-ink">{formatNumber(weightKg)}</span> kg
+      <span className="mx-1.5">=</span>
+      <span className="text-ink">{formatNumber(rawDoseTypical)}</span> {unit}
+      {typicalCapped && cap !== null && (
+        <span className="ml-1.5 text-ember-700">→ capped at {formatNumber(cap)} {unit}</span>
+      )}
+      {unit !== 'ml' && concValue !== null && volumeTypical !== null && (
+        <>
+          <span className="mx-1.5">÷</span>
+          <span className="text-ink">{formatNumber(concValue)}</span> {unit}/ml
+          <span className="mx-1.5">=</span>
+          <span className="text-ink">{formatNumber(volumeTypical)}</span> ml
+        </>
+      )}
+    </>
+  );
+}
+
+function WarningIcon({ className = '' }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden className={className} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 9v4" />
+      <path d="M12 17h.01" />
+      <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+    </svg>
   );
 }
