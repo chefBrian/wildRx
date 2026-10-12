@@ -33,5 +33,7 @@ export default defineConfig({
     environment: 'happy-dom',
     setupFiles: ['./src/test/setup.ts'],
     globals: true,
+    // Rules tests need the Firestore emulator: npm run test:rules.
+    exclude: ['**/node_modules/**', 'rules-tests/**'],
   },
 });
