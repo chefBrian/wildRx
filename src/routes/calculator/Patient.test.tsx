@@ -42,6 +42,11 @@ function renderAt(url: string, onUrl: (u: string) => void = () => {}) {
 }
 
 describe('Patient', () => {
+  it('links to the medication reference', async () => {
+    renderAt('/');
+    expect(screen.getByRole('link', { name: /look up a medication/i })).toHaveAttribute('href', '/meds');
+  });
+
   it('pre-fills species and weight from the query', async () => {
     renderAt('/?species=rth&weight=1.2');
     expect(await screen.findByText('Red-tailed Hawk')).toBeInTheDocument();

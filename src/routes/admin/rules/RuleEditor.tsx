@@ -8,6 +8,7 @@ import { normalizeRuleRange, validateRule } from '../../../domain/validate';
 import { targetWeightRange } from '../../../domain/targetWeights';
 import { doseWarnings, type DoseWarning } from '../../../domain/warnings';
 import { FREQUENCY_OPTIONS, isCanonicalFrequency } from '../../../domain/frequency';
+import { bottleAllowsRoute } from '../../../domain/concentrations';
 import { ROUTES } from '../../../domain/doseRoutes';
 import { ruleId } from '../../../domain/ruleId';
 import { overrideImpact } from '../../../domain/ruleImpact';
@@ -23,7 +24,6 @@ import {
 type DoseField = 'min' | 'typical' | 'max';
 const PREVIEW_TAGS: Record<DoseWarning['kind'], string> = {
   cap: 'capped',
-  formRoute: 'not injectable',
   unmeasurable: 'too small to measure',
 };
 
@@ -355,14 +355,15 @@ function previewLine(rule: DosingRule, unit: DoseUnit, concentrations: Concentra
     return `${head}${formatNumber(base.dose.typical)} ${unit}${tagsFor(base, rule, kg)}`;
   }
   const volumes = concentrations.map(c => {
+    if (!bottleAllowsRoute(c, rule.route)) return `not for ${rule.route} @ ${formatNumber(c.value)} ${unit}/ml`;
     const r = calculateDose({ weightKg: kg, rule, doseUnit: unit, concentration: c });
-    return `${formatNumber(r.volumeMl?.typical ?? NaN)} ml @ ${formatNumber(c.value)} ${unit}/ml${tagsFor(r, rule, kg, c)}`;
+    return `${formatNumber(r.volumeMl?.typical ?? NaN)} ml @ ${formatNumber(c.value)} ${unit}/ml${tagsFor(r, rule, kg)}`;
   });
   return `${head}${formatNumber(base.dose.typical)} ${unit} = ${volumes.join(', ')}`;
 }
 
-function tagsFor(result: DoseResult, rule: DosingRule, kg: number, concentration?: Concentration): string {
-  const tags = doseWarnings({ result, rule, weightKg: kg, concentration }).map(w => PREVIEW_TAGS[w.kind]);
+function tagsFor(result: DoseResult, rule: DosingRule, kg: number): string {
+  const tags = doseWarnings({ result, rule, weightKg: kg }).map(w => PREVIEW_TAGS[w.kind]);
   return tags.length ? ` (${tags.join(', ')})` : '';
 }
 

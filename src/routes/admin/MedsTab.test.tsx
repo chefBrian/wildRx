@@ -132,6 +132,72 @@ describe('MedsTab', () => {
     expect(screen.getByLabelText(/dosed in/i)).toBeDisabled();
     expect(screen.queryByText(/checking rules/i)).not.toBeInTheDocument();
   });
+
+  it('ticks the form defaults on a new bottle and follows form changes until touched', async () => {
+    const user = userEvent.setup();
+    await startNew(user);
+    await addMgConcentration(user, '5'); // selects form 'oral'
+    expect(screen.getByLabelText('Concentration 1 PO')).toBeChecked();
+    expect(screen.getByLabelText('Concentration 1 IM')).not.toBeChecked();
+    await user.selectOptions(screen.getByLabelText(/concentration 1 form/i), 'injectable');
+    expect(screen.getByLabelText('Concentration 1 IM')).toBeChecked();
+    expect(screen.getByLabelText('Concentration 1 SC')).toBeChecked();
+    expect(screen.getByLabelText('Concentration 1 IV')).not.toBeChecked();
+    await user.click(screen.getByLabelText('Concentration 1 PO')); // touched
+    await user.selectOptions(screen.getByLabelText(/concentration 1 form/i), 'oral');
+    expect(screen.getByLabelText('Concentration 1 IM')).toBeChecked(); // kept, not reset
+    expect(screen.getByText('An oral bottle is ticked for IM, SC - check the label.')).toBeInTheDocument();
+  });
+
+  it('treats bottles loaded from the database as touched, with routes filled in', async () => {
+    const user = userEvent.setup();
+    render(<MedsTab />);
+    await waitFor(() => screen.getByText('Meloxicam'));
+    await user.click(screen.getByRole('button', { name: /edit/i }));
+    expect(screen.getByLabelText('Concentration 1 PO')).toBeChecked(); // oral default filled
+    await user.selectOptions(screen.getByLabelText(/concentration 1 form/i), 'injectable');
+    expect(screen.getByLabelText('Concentration 1 IM')).not.toBeChecked(); // not reset to defaults
+  });
+
+  it('notes IV and blocks a bottle with no routes', async () => {
+    const user = userEvent.setup();
+    await startNew(user);
+    await addMgConcentration(user, '5');
+    await user.click(screen.getByLabelText('Concentration 1 IV'));
+    expect(screen.getByText("Only tick IV if the label says it's safe IV.")).toBeInTheDocument();
+    await user.click(screen.getByLabelText('Concentration 1 IV'));
+    await user.click(screen.getByLabelText('Concentration 1 PO'));
+    expect(screen.getByText('Choose at least one route.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /save/i })).toBeDisabled();
+  });
+
+  it('warns when this med has rules for a route no bottle allows', async () => {
+    const repos = await import('../../firebase/repos');
+    vi.mocked(repos.listDosingRulesForMed).mockResolvedValue([{ id: 'r1', route: 'IM' }] as DosingRule[]);
+    const user = userEvent.setup();
+    render(<MedsTab />);
+    await waitFor(() => screen.getByText('Meloxicam'));
+    await user.click(screen.getByRole('button', { name: /edit/i }));
+    expect(await screen.findByText("This med has IM rules but no bottle allows IM. The calculator will show 'No bottle on file' for them.")).toBeInTheDocument();
+  });
+
+  it('saves routes and the schema version', async () => {
+    const user = userEvent.setup();
+    await startNew(user);
+    await addMgConcentration(user, '62.5');
+    await user.click(screen.getByRole('button', { name: /save/i }));
+    const { upsertMedication } = await import('../../firebase/repos');
+    expect(upsertMedication).toHaveBeenCalledWith(expect.objectContaining({
+      schemaVersion: 2,
+      concentrations: [expect.objectContaining({ routes: ['PO'] })],
+    }));
+  });
+
+  it('links each medication to its fact sheet', async () => {
+    render(<MedsTab />);
+    await waitFor(() => screen.getByText('Meloxicam'));
+    expect(screen.getByRole('link', { name: 'Fact sheet' })).toHaveAttribute('href', '/meds/m1');
+  });
 });
 
 async function startNew(user: ReturnType<typeof userEvent.setup>) {

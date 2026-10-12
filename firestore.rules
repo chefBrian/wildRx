@@ -3,9 +3,13 @@ service cloud.firestore {
   match /databases/{database}/documents {
     match /medications/{id} {
       allow read: if true;
+      // schemaVersion 2 is written only by admin builds that keep bottle `routes`; older builds
+      // would silently strip them, so their medication saves are rejected.
       allow create, update: if request.auth != null
         && request.resource.data.doseUnit in ['mg', 'IU', 'ml']
-        && request.resource.data.concentrations is list;
+        && request.resource.data.concentrations is list
+        && request.resource.data.schemaVersion is int
+        && request.resource.data.schemaVersion >= 2;
       allow delete: if request.auth != null;
     }
     match /species/{id} {

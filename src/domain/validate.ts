@@ -1,6 +1,7 @@
 import type {
   Concentration, ConcentrationForm, DoseUnit, DosingRule, Medication,
 } from './types';
+import { normalizeRoutes } from './concentrations';
 
 export type FieldErrors = Record<string, string>;
 
@@ -29,6 +30,7 @@ export function validateMedication(med: MedicationDraft): FieldErrors {
     med.concentrations.forEach((c, i) => {
       if (!(Number.isFinite(c.value) && c.value > 0)) errors[`conc.${i}.value`] = 'Enter a strength above 0.';
       if (c.form === '') errors[`conc.${i}.form`] = 'Choose a form.';
+      if (!c.routes || c.routes.length === 0) errors[`conc.${i}.routes`] = 'Choose at least one route.';
       if (c.note && STRENGTH_IN_TEXT.test(c.note)) {
         errors[`conc.${i}.note`] = 'Put the strength in the number field, not the note.';
       }
@@ -67,6 +69,7 @@ export function toMedication(draft: MedicationDraft): Medication {
     id: draft.id,
     name: draft.name.trim(),
     doseUnit,
+    schemaVersion: 2,
     concentrations: doseUnit === 'ml' ? [] : draft.concentrations.map(toConcentration),
   };
   const generic = draft.genericName?.trim();
@@ -82,7 +85,6 @@ export function toMedication(draft: MedicationDraft): Medication {
 function toConcentration(c: ConcentrationDraft): Concentration {
   if (c.form === '') throw new Error('toConcentration: form not chosen');
   const note = c.note?.trim();
-  return note
-    ? { id: c.id, value: c.value, form: c.form, note }
-    : { id: c.id, value: c.value, form: c.form };
+  const base: Concentration = { id: c.id, value: c.value, form: c.form, routes: normalizeRoutes(c.routes ?? []) };
+  return note ? { ...base, note } : base;
 }

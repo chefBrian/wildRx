@@ -21,6 +21,7 @@
 import { initializeApp, applicationDefault } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 import { ruleId } from './lib/ruleId.mjs';
+import { DEFAULT_ROUTES } from './lib/defaultRoutes.mjs';
 
 const PROJECT_ID = 'wildrx';
 
@@ -1060,10 +1061,19 @@ async function writeAll(collName, items) {
 async function main() {
   console.log(`Seeding project=${PROJECT_ID} via Admin SDK ...`);
   await writeAll('species', species);
-  await writeAll('medications', medications);
+  await writeAll('medications', medications.map(withRoutes));
   await writeAll('dosingRules', dosingRules);
   console.log('Done.');
   process.exit(0);
+}
+
+// Explicit routes from the form defaults (never IV) and the current medication schema version.
+function withRoutes(med) {
+  return {
+    ...med,
+    schemaVersion: 2,
+    concentrations: med.concentrations.map(c => ({ ...c, routes: c.routes ?? [...DEFAULT_ROUTES[c.form]] })),
+  };
 }
 
 main().catch(err => {

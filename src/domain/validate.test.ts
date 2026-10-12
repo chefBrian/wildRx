@@ -9,7 +9,7 @@ const draft = (over: Partial<MedicationDraft> = {}): MedicationDraft => ({
   id: 'm1',
   name: 'Enrofloxacin',
   doseUnit: 'mg',
-  concentrations: [{ id: 'c1', value: 22.7, form: 'oral' }],
+  concentrations: [{ id: 'c1', value: 22.7, form: 'oral', routes: ['PO'] }],
   ...over,
 });
 
@@ -141,7 +141,7 @@ describe('normalizeRuleRange', () => {
 describe('toMedication', () => {
   it('toMedication drops whitespace note', () => {
     const m = toMedication(draft({ concentrations: [{ id: 'c1', value: 5, form: 'oral', note: '  ' }] }));
-    expect(m.concentrations[0]).toEqual({ id: 'c1', value: 5, form: 'oral' });
+    expect(m.concentrations[0]).toEqual({ id: 'c1', value: 5, form: 'oral', routes: [] });
     expect('note' in m.concentrations[0]).toBe(false);
   });
 
@@ -158,5 +158,18 @@ describe('toMedication', () => {
 
   it('throws if the unit was never chosen', () => {
     expect(() => toMedication(draft({ doseUnit: null }))).toThrow();
+  });
+});
+
+describe('routes on concentrations', () => {
+  it('requires at least one route', () => {
+    const e = validateMedication(draft({ concentrations: [{ id: 'c1', value: 5, form: 'oral', routes: [] }] }));
+    expect(e['conc.0.routes']).toBe('Choose at least one route.');
+  });
+
+  it('writes routes deduped in route order and the schema version', () => {
+    const m = toMedication(draft({ concentrations: [{ id: 'c1', value: 5, form: 'injectable', routes: ['SC', 'PO', 'SC'] }] }));
+    expect(m.concentrations[0].routes).toEqual(['PO', 'SC']);
+    expect(m.schemaVersion).toBe(2);
   });
 });

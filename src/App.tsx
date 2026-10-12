@@ -7,10 +7,19 @@ import { Result } from './routes/calculator/Result';
 import { LegacyResultRedirect, LegacyStepTwoRedirect } from './routes/calculator/LegacyRedirects';
 
 const AdminApp = lazy(() => import('./routes/admin/AdminApp'));
+const MedsRoutes = lazy(() => import('./routes/meds/MedsRoutes'));
 
 const AdminFallback = () => (
   <main className="mx-auto max-w-3xl px-5 pt-10 text-[14px] italic text-ink2">
     Loading admin…
+  </main>
+);
+
+const MedsFallback = () => (
+  <main className="mx-auto max-w-md px-5 pt-10" role="status">
+    <span className="sr-only">Loading…</span>
+    <div className="h-8 w-2/3 bg-cream rounded animate-pulse" />
+    <div className="mt-6 h-14 w-full bg-cream rounded animate-pulse" />
   </main>
 );
 
@@ -21,8 +30,14 @@ export default function App() {
         <Route path="/" element={<CalculatorHome />} />
         <Route path="/dose/:speciesId/:weight" element={<MedListRoute />} />
         <Route path="/dose/:speciesId/:weight/:medId" element={<Result />} />
-        {/* Reserved for the per-medication fact sheet (separate spec). */}
-        <Route path="/meds/:medId" element={<NotFound />} />
+        <Route
+          path="/meds/*"
+          element={
+            <Suspense fallback={<MedsFallback />}>
+              <MedsRoutes />
+            </Suspense>
+          }
+        />
         <Route path="/calc/:medId" element={<LegacyStepTwoRedirect />} />
         <Route path="/calc/:medId/:speciesId/:weight" element={<LegacyResultRedirect />} />
         <Route

@@ -4,12 +4,12 @@ import Fuse from 'fuse.js';
 import { getPatientSnapshot, type PatientSnapshot } from './patientSnapshot';
 import { SchemaMismatchError } from '../../firebase/schemaGuard';
 import { medsForSpecies } from '../../domain/medsForSpecies';
-import { resolveConcentration } from '../../domain/concentrations';
+import { bottleAllowsRoute, formatRoutes, resolveConcentration } from '../../domain/concentrations';
 import { formatConcentration, formatUnitBadge, formatWeightShort } from '../../domain/format';
 import { parseWeightParam } from '../../domain/weight';
 import { WizardHeader } from '../../components/WizardHeader';
 import { SchemaMismatchNotice } from '../../components/SchemaMismatchNotice';
-import type { Medication, Species } from '../../domain/types';
+import type { Concentration, Medication, Species } from '../../domain/types';
 
 type Load =
   | { status: 'loading' }
@@ -66,6 +66,7 @@ function MedListView({ species, weightKg, snapshot }: { species: Species; weight
   const [query, setQuery] = useState('');
   const nav = useNavigate();
   const openId = params.get('open');
+  const routeParam = params.get('route');
   const pickRequested = params.get('pick') === '1';
 
   const { withRules, withoutRules } = useMemo(
@@ -132,9 +133,11 @@ function MedListView({ species, weightKg, snapshot }: { species: Species; weight
               <p className="mt-4 text-[14px] italic text-ink2">No medications match "{query}".</p>
             )}
             <ul className="mt-3">
-              {ruled.map(({ med }) => {
+              {ruled.map(({ med, matched }) => {
                 const multi = needsBottle(med);
                 const open = multi && openId === med.id;
+                const routesInEffect = [...new Set(matched.map(r => r.route))];
+                const usable = (c: Concentration) => routesInEffect.some(r => bottleAllowsRoute(c, r));
                 return (
                   <li key={med.id} className="border-b border-taupe/50 last:border-0">
                     <button
@@ -159,16 +162,26 @@ function MedListView({ species, weightKg, snapshot }: { species: Species; weight
                             Pick the concentration you're using - the link didn't say which bottle.
                           </p>
                         )}
+                        {!med.concentrations.some(usable) && (
+                          <p role="status" className="text-[13px] text-clay-700 mb-2">
+                            {`No bottle on file can be given by ${formatRoutes(routesInEffect)}. Ask a vet.`}
+                          </p>
+                        )}
                         <ul className="space-y-2">
-                          {med.concentrations.map(c => (
+                          {med.concentrations.map(c => usable(c) ? (
                             <li key={c.id}>
                               <button
                                 type="button"
-                                onClick={() => nav(`${base}/${enc(med.id)}?conc=${enc(c.id)}`)}
+                                onClick={() => nav(`${base}/${enc(med.id)}?conc=${enc(c.id)}${routeParam ? `&route=${enc(routeParam)}` : ''}`)}
                                 className="w-full min-h-[48px] text-left px-4 py-3 rounded-md border border-taupe bg-surface text-[15px] text-ink hover:border-moss-600 transition-colors"
                               >
                                 {formatConcentration(c, med.doseUnit)}
                               </button>
+                            </li>
+                          ) : (
+                            <li key={c.id} aria-disabled="true" className="px-4 py-3 rounded-md border border-taupe/60 bg-cream/40 text-ink2">
+                              <div className="text-[15px]">{formatConcentration(c, med.doseUnit)}</div>
+                              <div className="text-[12px] italic mt-0.5">{`Not for ${formatRoutes(routesInEffect)}`}</div>
                             </li>
                           ))}
                         </ul>

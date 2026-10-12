@@ -159,6 +159,14 @@ describe('RuleEditor - ids and targets', () => {
     expect(repos.rekeyDosingRule).toHaveBeenCalledWith('vita__group-reptile__IM', expect.objectContaining({ id: 'vita__group-reptile__SC', route: 'SC' }));
   });
 
+  it('shows a bottle not set for the rule route as "not for" in the preview', async () => {
+    const user = userEvent.setup();
+    const imOnly: Medication = { ...vita, concentrations: [{ id: 'c1', value: 50000, form: 'injectable', routes: ['IM'] }] };
+    renderEditor({ meds: [imOnly] });
+    await user.selectOptions(screen.getByLabelText('Route'), 'SC');
+    expect(screen.getByText(/^0\.3 kg: 450 IU = not for SC @ 50,000 IU\/ml$/)).toBeInTheDocument();
+  });
+
   it('re-keys a legacy id on save', async () => {
     const user = userEvent.setup();
     const legacy = { ...existingRule, id: '3f2a9c1e-uuid' };

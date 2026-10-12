@@ -5,13 +5,15 @@ import {
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { NumberField } from '../../components/NumberField';
 import { formatUnitBadge } from '../../domain/format';
+import { allowedRoutes, DEFAULT_ROUTES, formatRoutes, normalizeRoutes } from '../../domain/concentrations';
+import { ROUTES } from '../../domain/doseRoutes';
 import {
   validateMedication, toMedication,
   type ConcentrationDraft, type MedicationDraft,
 } from '../../domain/validate';
 import {
   CONCENTRATION_FORMS, DOSE_UNITS,
-  type DoseUnit, type Medication,
+  type DoseUnit, type Medication, type Route,
 } from '../../domain/types';
 
 const blank: MedicationDraft = { id: '', name: '', doseUnit: null, concentrations: [] };
@@ -32,6 +34,9 @@ export function MedsTab() {
   // null = still counting. The unit select stays locked until the count says 0.
   const [ruleCount, setRuleCount] = useState<number | null>(0);
   const [ruleCheckFailed, setRuleCheckFailed] = useState(false);
+  const [ruleRoutes, setRuleRoutes] = useState<Route[]>([]);
+  // Bottle ids whose routes were chosen (or loaded) - form changes don't reset those.
+  const [touched, setTouched] = useState<Set<string>>(new Set());
   const countingFor = useRef<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<Medication | null>(null);
 
@@ -43,18 +48,25 @@ export function MedsTab() {
   }, []);
 
   async function startEdit(m: Medication | null) {
-    setEditing(m ?? blank);
+    setRuleRoutes([]);
     countingFor.current = m?.id ?? null;
     setRuleCheckFailed(false);
     if (!m) {
+      setEditing(blank);
+      setTouched(new Set());
       setRuleCount(0);
       return;
     }
+    setEditing({ ...m, concentrations: m.concentrations.map(c => ({ ...c, routes: allowedRoutes(c) })) });
+    setTouched(new Set(m.concentrations.map(c => c.id)));
     setRuleCount(null);
     try {
-      const n = (await listDosingRulesForMed(m.id)).length;
+      const rs = await listDosingRulesForMed(m.id);
       // Ignore a late answer for a med the admin already navigated away from.
-      if (countingFor.current === m.id) setRuleCount(n);
+      if (countingFor.current === m.id) {
+        setRuleCount(rs.length);
+        setRuleRoutes([...new Set(rs.map(r => r.route).filter(Boolean))]);
+      }
     } catch {
       // Unknown count (e.g. old-shape rules) - leave the unit locked and say so.
       if (countingFor.current === m.id) setRuleCheckFailed(true);
@@ -80,7 +92,19 @@ export function MedsTab() {
     if (!editing) return;
     const next = [...editing.concentrations];
     next[i] = { ...next[i], ...patch };
+    if (patch.form !== undefined && !touched.has(next[i].id)) {
+      next[i] = { ...next[i], routes: patch.form === '' ? [] : [...DEFAULT_ROUTES[patch.form]] };
+    }
     setEditing({ ...editing, concentrations: next });
+  }
+
+  function toggleRoute(i: number, route: Route) {
+    if (!editing) return;
+    const c = editing.concentrations[i];
+    const current = c.routes ?? [];
+    const routes = current.includes(route) ? current.filter(r => r !== route) : normalizeRoutes([...current, route]);
+    updateConc(i, { routes });
+    setTouched(new Set(touched).add(c.id));
   }
 
   function setUnit(unit: DoseUnit | null) {
@@ -96,6 +120,9 @@ export function MedsTab() {
   function editPanel() {
     if (!editing) return null;
     const errors = validateMedication(editing);
+    const orphanRoutes = editing.doseUnit !== 'ml' && editing.concentrations.length > 0
+      ? ruleRoutes.filter(r => !editing.concentrations.some(c => (c.routes ?? []).includes(r)))
+      : [];
     return (
       <div className="bg-surface border border-taupe rounded-md p-5 space-y-4">
         <div className="text-[11px] uppercase tracking-[0.14em] text-ink2">
@@ -178,9 +205,7 @@ export function MedsTab() {
             <div className={eyebrowCls}>Concentrations</div>
             <p className="text-[12px] italic text-ink2 mb-3 max-w-prose">
               One row per product on the shelf. Strength goes in the number field.
-              Use the note for brand, dilution or route limits - e.g. "Baytril",
-              "in-house dilution", "IM/SC only - never IV". "Injectable" alone
-              does not mean safe to give IV.
+              Tick the routes this bottle may be given by. Use the note for brand or dilution.
             </p>
             <div className="space-y-3">
               {editing.concentrations.map((c, i) => (
@@ -223,7 +248,26 @@ export function MedsTab() {
                       ×
                     </button>
                   </div>
-                  {(['value', 'form', 'note'] as const).map(f =>
+                  <fieldset className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1">
+                    <legend className="sr-only">{`Concentration ${i + 1} routes`}</legend>
+                    <span className="text-[12px] text-ink2">Can be given by</span>
+                    {ROUTES.map(r => (
+                      <label key={r} className="inline-flex items-center gap-1.5 text-[13px] text-ink">
+                        <input
+                          type="checkbox"
+                          aria-label={`Concentration ${i + 1} ${r}`}
+                          checked={(c.routes ?? []).includes(r)}
+                          onChange={() => toggleRoute(i, r)}
+                        />
+                        {r}
+                      </label>
+                    ))}
+                  </fieldset>
+                  {(c.routes ?? []).includes('IV') && (
+                    <div className="mt-1 text-[12px] text-ochre-700">Only tick IV if the label says it's safe IV.</div>
+                  )}
+                  {formCaution(c) && <div className="mt-1 text-[12px] text-ochre-700">{formCaution(c)}</div>}
+                  {(['value', 'form', 'note', 'routes'] as const).map(f =>
                     errors[`conc.${i}.${f}`] ? <div key={f} className={errorCls}>{errors[`conc.${i}.${f}`]}</div> : null
                   )}
                 </div>
@@ -233,12 +277,18 @@ export function MedsTab() {
               type="button"
               onClick={() => setEditing({
                 ...editing,
-                concentrations: [...editing.concentrations, { id: crypto.randomUUID().slice(0, 8), value: NaN, form: '' }],
+                concentrations: [...editing.concentrations, { id: crypto.randomUUID().slice(0, 8), value: NaN, form: '', routes: [] }],
               })}
               className="mt-2 text-[12px] uppercase tracking-[0.1em] text-moss-700 underline underline-offset-4 decoration-1"
             >
               + Add concentration
             </button>
+          </div>
+        )}
+
+        {orphanRoutes.length > 0 && (
+          <div role="status" className="text-[13px] text-ochre-700">
+            {`This med has ${formatRoutes(orphanRoutes)} rules but no bottle allows ${formatRoutes(orphanRoutes)}. The calculator will show 'No bottle on file' for them.`}
           </div>
         )}
 
@@ -311,6 +361,12 @@ export function MedsTab() {
                 )}
               </div>
               <div className="flex gap-6 shrink-0">
+                <a
+                  href={`/meds/${encodeURIComponent(m.id)}`}
+                  className="min-h-[44px] inline-flex items-center text-[12px] uppercase tracking-[0.1em] text-moss-700 underline underline-offset-4 decoration-1"
+                >
+                  Fact sheet
+                </a>
                 <button
                   type="button"
                   onClick={() => startEdit(m)}
@@ -342,4 +398,12 @@ export function MedsTab() {
       />
     </div>
   );
+}
+
+/** Oral/topical bottles ticked for an injection route - likely a mistake worth a second look. */
+function formCaution(c: ConcentrationDraft): string | null {
+  if (c.form !== 'oral' && c.form !== 'topical') return null;
+  const injection = (c.routes ?? []).filter(r => r === 'IM' || r === 'SC' || r === 'IV');
+  if (injection.length === 0) return null;
+  return `${c.form === 'oral' ? 'An oral' : 'A topical'} bottle is ticked for ${injection.join(', ')} - check the label.`;
 }

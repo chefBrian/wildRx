@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { TypeaheadSelect, type TypeaheadOption } from '../../components/TypeaheadSelect';
 import { SchemaMismatchNotice } from '../../components/SchemaMismatchNotice';
 import { SchemaMismatchError } from '../../firebase/schemaGuard';
@@ -136,6 +136,12 @@ export function Patient() {
         >
           Choose medication
         </button>
+        <Link
+          to="/meds"
+          className="block text-center min-h-[44px] text-[12px] uppercase tracking-[0.1em] text-moss-700 underline underline-offset-4 decoration-1"
+        >
+          Look up a medication
+        </Link>
       </div>
     </main>
   );

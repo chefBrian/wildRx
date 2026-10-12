@@ -87,6 +87,14 @@ describe('MedList', () => {
     await waitFor(() => expect(landed).toBe('/dose/rth/1.2/pepto'));
   });
 
+  it('carries ?route into the result URL when a bottle is picked', async () => {
+    const user = userEvent.setup();
+    let landed = '';
+    renderAt('/dose/rth/1.2?open=iver&route=IM', u => { landed = u; });
+    await user.click(await screen.findByRole('button', { name: '1 mg/ml · injectable · 1:10 dilution' }));
+    await waitFor(() => expect(landed).toBe('/dose/rth/1.2/iver?conc=inj1&route=IM'));
+  });
+
   it('expands a multi-bottle med with nothing chosen, then goes to the result with ?conc', async () => {
     const user = userEvent.setup();
     let landed = '';
@@ -155,5 +163,37 @@ describe('MedList', () => {
     renderAt('/dose/rth/1.2');
     await user.click(await screen.findByRole('button', { name: /try again/i }));
     expect(await screen.findByRole('button', { name: /meloxicam/i })).toBeInTheDocument();
+  });
+
+  it('disables a bottle that none of the routes in effect can use', async () => {
+    vi.mocked(repos.listMedications).mockResolvedValue([
+      { id: 'iver', name: 'Ivermectin', doseUnit: 'mg', concentrations: [
+        { id: 'inj10', value: 10, form: 'injectable', routes: ['IM'] },
+        { id: 'inj1', value: 1, form: 'injectable', note: '1:10 dilution' },
+      ] },
+    ]);
+    vi.mocked(repos.listAllDosingRules).mockResolvedValue([groupRule('iver')]); // PO
+    const user = userEvent.setup();
+    renderAt('/dose/rth/1.2');
+    await user.click(await screen.findByRole('button', { name: /ivermectin/i }));
+    expect(screen.queryByRole('button', { name: /10 mg\/ml/ })).not.toBeInTheDocument();
+    expect(screen.getByText('10 mg/ml · injectable')).toBeInTheDocument();
+    expect(screen.getByText('Not for PO')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '1 mg/ml · injectable · 1:10 dilution' })).toBeInTheDocument();
+  });
+
+  it('says so when no bottle can be used for the routes in effect', async () => {
+    vi.mocked(repos.listMedications).mockResolvedValue([
+      { id: 'iver', name: 'Ivermectin', doseUnit: 'mg', concentrations: [
+        { id: 'a', value: 10, form: 'injectable', routes: ['IM'] },
+        { id: 'b', value: 1, form: 'injectable', routes: ['SC'] },
+      ] },
+    ]);
+    vi.mocked(repos.listAllDosingRules).mockResolvedValue([groupRule('iver')]); // PO
+    const user = userEvent.setup();
+    renderAt('/dose/rth/1.2');
+    await user.click(await screen.findByRole('button', { name: /ivermectin/i }));
+    expect(screen.getByText('No bottle on file can be given by PO. Ask a vet.')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /mg\/ml/ })).not.toBeInTheDocument();
   });
 });

@@ -53,6 +53,9 @@ export interface Concentration {
   id: string;              // stable within the med; carried in ?conc=
   value: number;           // strength per ml, in `${med.doseUnit}/ml`
   form: ConcentrationForm;
+  /** Routes this bottle may be given by. Always written by current code (non-empty, ROUTES order);
+   *  optional because stored docs may predate it - read through allowedRoutes(), never directly. */
+  routes?: Route[];
   note?: string;           // e.g. "Baytril", "in-house dilution" - never a strength
 }
 
@@ -67,6 +70,7 @@ export interface Medication {
   productDescription?: string;       // required when doseUnit === 'ml'
   defaultRoute?: Route;
   notes?: string;
+  schemaVersion?: number;            // current code always writes 2; firestore.rules requires it
 }
 
 export type RuleTarget =

@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { Result } from './Result';
@@ -46,6 +47,12 @@ function renderAt(url: string) {
 }
 
 describe('Result', () => {
+  it('links to the fact sheet for this medication', async () => {
+    renderAt('/dose/s1/1/m1');
+    await waitFor(() => screen.getByText(/PO/i));
+    expect(screen.getByRole('link', { name: /about meloxicam/i })).toHaveAttribute('href', '/meds/m1');
+  });
+
   it('shows calculated mg dose for a 1kg raptor', async () => {
     renderAt('/dose/s1/1/m1');
     await waitFor(() => {
@@ -149,13 +156,6 @@ describe('Result', () => {
     expect(screen.getByText('1 ml/kg')).toBeInTheDocument();
   });
 
-  it('warns about an oral form on an IM rule', async () => {
-    const { listAllDosingRules } = await import('../../firebase/repos');
-    vi.mocked(listAllDosingRules).mockResolvedValueOnce([{ ...baseRule, route: 'IM' }]);
-    renderAt('/dose/s1/1/m1');
-    await waitFor(() => expect(screen.getByText(/This rule is IM, but the selected concentration is oral/)).toBeInTheDocument());
-  });
-
   it('does not warn about an injectable on a PO rule', async () => {
     const { listMedications } = await import('../../firebase/repos');
     vi.mocked(listMedications).mockResolvedValueOnce([
@@ -256,5 +256,109 @@ describe('Result', () => {
     await waitFor(() => expect(screen.getByText(/couldn't load the dosing data/i)).toBeInTheDocument());
     fireEvent.click(screen.getByRole('button', { name: /try again/i }));
     await waitFor(() => expect(screen.getByText(/q24h/i)).toBeInTheDocument());
+  });
+
+  const twoRoutes = () => [baseRule, { ...baseRule, id: 'r2', route: 'IM' as const }];
+
+  it('blocks a route the bottle is not set for and shows no dose number anywhere', async () => {
+    const { listAllDosingRules } = await import('../../firebase/repos');
+    // Oral bottle (no stored routes → PO only) on an IM rule with a cap that would otherwise warn.
+    vi.mocked(listAllDosingRules).mockResolvedValueOnce([{ ...baseRule, route: 'IM', maxSingleDose: 0.1 }]);
+    renderAt('/dose/s1/1/m1');
+    await waitFor(() => expect(screen.getByText('Not for IM use')).toBeInTheDocument());
+    expect(screen.getByText('1.5 mg/ml · oral is set for PO only.')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Volume')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Dose')).not.toBeInTheDocument();
+    expect(screen.queryByText(/capped/i)).not.toBeInTheDocument();
+    const text = document.body.textContent ?? '';
+    expect(text).not.toMatch(/0\.1\s*mg\b/); // capped dose
+    expect(text).not.toMatch(/\d\s*ml\b/);    // any volume
+    expect(text).not.toContain('×');          // math line
+    expect(screen.getByRole('button', { name: /copy summary/i })).toBeDisabled();
+  });
+
+  it('says no bottle on file can be given by the route when no other bottle allows it', async () => {
+    const { listAllDosingRules } = await import('../../firebase/repos');
+    vi.mocked(listAllDosingRules).mockResolvedValueOnce([{ ...baseRule, route: 'IM' }]);
+    renderAt('/dose/s1/1/m1');
+    await waitFor(() => expect(screen.getByText(/No bottle on file can be given by IM\. Ask a vet\./)).toBeInTheDocument());
+    expect(screen.queryByRole('link', { name: /choose another bottle/i })).not.toBeInTheDocument();
+  });
+
+  it('links to another bottle when one allows the route', async () => {
+    const { listMedications, listAllDosingRules } = await import('../../firebase/repos');
+    vi.mocked(listMedications).mockResolvedValueOnce([
+      { id: 'm1', name: 'Meloxicam', doseUnit: 'mg', concentrations: [
+        { id: 'oral', value: 1.5, form: 'oral' },
+        { id: 'inj', value: 5, form: 'injectable', routes: ['IM', 'SC'] },
+      ] },
+    ]);
+    vi.mocked(listAllDosingRules).mockResolvedValueOnce([{ ...baseRule, route: 'IM' }]);
+    renderAt('/dose/s1/1/m1?conc=oral');
+    await waitFor(() => expect(screen.getByText('Not for IM use')).toBeInTheDocument());
+    expect(screen.getByRole('link', { name: /choose another bottle/i })).toHaveAttribute('href', '/dose/s1/1?open=m1&route=IM');
+  });
+
+  it('opens on the first route tab the bottle allows', async () => {
+    const { listMedications, listAllDosingRules } = await import('../../firebase/repos');
+    vi.mocked(listMedications).mockResolvedValueOnce([
+      { id: 'm1', name: 'Meloxicam', doseUnit: 'mg', concentrations: [
+        { id: 'oral', value: 1.5, form: 'oral' },
+        { id: 'inj', value: 5, form: 'injectable', routes: ['IM'] },
+      ] },
+    ]);
+    vi.mocked(listAllDosingRules).mockResolvedValueOnce(twoRoutes()); // PO first, then IM
+    renderAt('/dose/s1/1/m1?conc=inj');
+    await waitFor(() => expect(screen.getByRole('tab', { name: /IM/ })).toHaveAttribute('aria-selected', 'true'));
+    expect(screen.getByLabelText('Volume')).toBeInTheDocument();
+  });
+
+  it('opens on the ?route tab when the bottle allows it', async () => {
+    const { listMedications, listAllDosingRules } = await import('../../firebase/repos');
+    vi.mocked(listMedications).mockResolvedValueOnce([
+      { id: 'm1', name: 'Meloxicam', doseUnit: 'mg', concentrations: [
+        { id: 'inj', value: 5, form: 'injectable', routes: ['PO', 'IM'] },
+        { id: 'oral', value: 1.5, form: 'oral' },
+      ] },
+    ]);
+    vi.mocked(listAllDosingRules).mockResolvedValueOnce(twoRoutes()); // PO first, then IM
+    renderAt('/dose/s1/1/m1?conc=inj&route=IM');
+    await waitFor(() => expect(screen.getByRole('tab', { name: /IM/ })).toHaveAttribute('aria-selected', 'true'));
+    expect(screen.getByLabelText('Volume')).toBeInTheDocument();
+  });
+
+  it('ignores a ?route the bottle does not allow', async () => {
+    const { listMedications, listAllDosingRules } = await import('../../firebase/repos');
+    vi.mocked(listMedications).mockResolvedValueOnce([
+      { id: 'm1', name: 'Meloxicam', doseUnit: 'mg', concentrations: [
+        { id: 'oral', value: 1.5, form: 'oral' },
+        { id: 'other', value: 5, form: 'injectable', routes: ['PO'] },
+      ] },
+    ]);
+    vi.mocked(listAllDosingRules).mockResolvedValueOnce(twoRoutes());
+    renderAt('/dose/s1/1/m1?conc=oral&route=IM');
+    await waitFor(() => expect(screen.getByRole('tab', { name: /PO/ })).toHaveAttribute('aria-selected', 'true'));
+    expect(screen.queryByText('Not for IM use')).not.toBeInTheDocument();
+  });
+
+  it('says the bottle has no routes set when it allows none', async () => {
+    const { listMedications } = await import('../../firebase/repos');
+    vi.mocked(listMedications).mockResolvedValueOnce([
+      { id: 'm1', name: 'Meloxicam', doseUnit: 'mg', concentrations: [{ id: 'x', value: 1.5, form: 'other' }] },
+    ]);
+    renderAt('/dose/s1/1/m1?conc=x');
+    await waitFor(() => expect(screen.getByText(/has no routes set\./)).toBeInTheDocument());
+    expect(screen.queryByLabelText('Volume')).not.toBeInTheDocument();
+  });
+
+  it('suggests another route when this bottle allows one', async () => {
+    const { listAllDosingRules } = await import('../../firebase/repos');
+    vi.mocked(listAllDosingRules).mockResolvedValueOnce([{ ...baseRule, id: 'r2', route: 'IM' }, baseRule]);
+    const user = userEvent.setup();
+    renderAt('/dose/s1/1/m1');
+    // Oral bottle: PO allowed, so it opens on the PO tab (index 1).
+    await waitFor(() => expect(screen.getByRole('tab', { name: /PO/ })).toHaveAttribute('aria-selected', 'true'));
+    await user.click(screen.getByRole('tab', { name: /IM/ }));
+    expect(screen.getByText(/No bottle on file can be given by IM\. Ask a vet\. Or choose another route above\./)).toBeInTheDocument();
   });
 });

@@ -11,12 +11,14 @@ interface Props {
   sourceLabel: string;
   /** Hidden by a species rule: shown for context, not in effect. */
   dimmed?: boolean;
-  /** Admin action buttons. The public fact sheet passes none. */
+  /** Admin action buttons. The public fact sheet passes a "No bottle on file for {route}" tag instead. */
   children?: ReactNode;
+  /** Public fact sheet: full contraindications and notes instead of compact indicators. */
+  detail?: boolean;
 }
 
 /** One rule as a read-only row. No admin or auth imports - the public fact sheet reuses it. */
-export function RuleSummary({ rule, unit, sourceLabel, dimmed = false, children }: Props) {
+export function RuleSummary({ rule, unit, sourceLabel, dimmed = false, children, detail = false }: Props) {
   const tone = rule.target.type === 'species' ? 'bg-moss-50 text-moss-700' : 'bg-ochre-50 text-ochre-700';
   const duration = plainDuration(rule.durationDays);
   const n = rule.contraindications.length;
@@ -39,12 +41,23 @@ export function RuleSummary({ rule, unit, sourceLabel, dimmed = false, children 
             <span>{rule.frequency} ({plainFrequency(rule.frequency)})</span>
             {duration && <span>· {duration}</span>}
             {rule.maxSingleDose !== null && <span>· max {formatNumber(rule.maxSingleDose)} {unit}</span>}
-            {n > 0 && <span className="text-clay-700">· {n} contraindication{n === 1 ? '' : 's'}</span>}
-            {rule.notes && <span>· notes</span>}
+            {!detail && n > 0 && <span className="text-clay-700">· {n} contraindication{n === 1 ? '' : 's'}</span>}
+            {!detail && rule.notes && <span>· notes</span>}
           </div>
         </div>
         {children && <div className="flex flex-col items-end gap-1 shrink-0">{children}</div>}
       </div>
+      {detail && n > 0 && (
+        <div className="mt-3 bg-clay-50 border-l-4 border-clay-600 px-4 py-3">
+          <div className="text-[11px] font-semibold uppercase tracking-[0.1em] text-clay-700">Contraindications</div>
+          <ul className="mt-1 space-y-0.5 text-[14px] text-ink list-disc pl-5 marker:text-clay-600">
+            {rule.contraindications.map((c, i) => <li key={i}>{c}</li>)}
+          </ul>
+        </div>
+      )}
+      {detail && rule.notes && (
+        <p className="mt-3 text-[14px] text-ink whitespace-pre-wrap leading-relaxed">{rule.notes}</p>
+      )}
     </div>
   );
 }

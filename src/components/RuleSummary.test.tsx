@@ -29,4 +29,13 @@ describe('RuleSummary', () => {
     expect(screen.getByTestId('rule-melox__group-raptor__PO')).toHaveClass('opacity-60');
     expect(screen.getByRole('button', { name: 'Edit' })).toBeInTheDocument();
   });
+
+  it('shows full contraindications and notes in detail mode', () => {
+    render(<RuleSummary rule={rule} unit="mg" sourceLabel="Raptor" detail />);
+    expect(screen.getByText('Renal disease')).toBeInTheDocument();
+    expect(screen.getByText('Dehydration')).toBeInTheDocument();
+    expect(screen.getByText('Give with food.')).toBeInTheDocument();
+    expect(screen.queryByText('· 2 contraindications')).not.toBeInTheDocument();
+    expect(screen.queryByText('· notes')).not.toBeInTheDocument();
+  });
 });

@@ -30,7 +30,7 @@ export async function listAllDosingRules(): Promise<DosingRule[]> {
   return snap.docs.map(toRule);
 }
 
-/** One med's rules. Only MedsTab uses this (to lock the unit once rules exist). */
+/** One med's rules. Used by admin MedsTab (to lock the unit once rules exist) and the public fact sheet. */
 export async function listDosingRulesForMed(medId: string): Promise<DosingRule[]> {
   const q = query(collection(db, 'dosingRules'), where('medicationId', '==', medId));
   const snap = await getDocs(q);
