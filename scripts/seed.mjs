@@ -207,7 +207,8 @@ const medications = [
     name: 'Buprenorphine',
     genericName: 'Buprenorphine',
     doseUnit: 'mg',
-    concentrations: [{ id: 'inj-0.3', value: 0.3, form: 'injectable' }],
+    // Not PO: swallowed buprenorphine has very low bioavailability (first-pass).
+    concentrations: [{ id: 'inj-0.3', value: 0.3, form: 'injectable', routes: ['IM', 'SC'] }],
     defaultRoute: 'IM',
     notes: 'Opioid partial agonist. Controlled substance.',
   },
@@ -332,7 +333,8 @@ const medications = [
     name: 'Maropitant',
     genericName: 'Maropitant citrate',
     doseUnit: 'mg',
-    concentrations: [{ id: 'inj-10', value: 10, form: 'injectable', note: 'Cerenia' }],
+    // Label routes are SC/IV; not IM.
+    concentrations: [{ id: 'inj-10', value: 10, form: 'injectable', note: 'Cerenia', routes: ['PO', 'SC'] }],
     defaultRoute: 'SC',
     notes: 'NK-1 receptor antagonist antiemetic. Useful for mammals with motion sickness, toxin ingestion, post-anesthetic nausea, or chemotherapy. Injection-site stinging reported - allow drug to reach room temperature before SC dose.',
   },
@@ -343,7 +345,7 @@ const medications = [
     doseUnit: 'mg',
     concentrations: [
       { id: 'inj-0.54', value: 0.54, form: 'injectable' },
-      { id: 'inj-15', value: 15, form: 'injectable', note: 'concentrated - OP toxicity' },
+      { id: 'inj-15', value: 15, form: 'injectable', note: 'concentrated - OP toxicity', routes: ['IM', 'SC'] }, // not PO
     ],
     defaultRoute: 'IM',
     notes: 'Anticholinergic. Antidote for organophosphate and carbamate insecticide toxicity (use the concentrated form). Low-dose use as premedication to reduce secretions before sedation. Watch for tachycardia at high doses.',
