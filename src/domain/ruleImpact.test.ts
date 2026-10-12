@@ -37,8 +37,13 @@ describe('deleteImpact', () => {
       .toBe('Red-tailed Hawk will have no rule for Meloxicam.');
   });
 
-  it('adds nothing when the species keeps another rule for the med', () => {
-    expect(deleteImpact({ rule: hawkPO, rules: [groupPO, hawkPO, hawkIM], species, medName: 'Meloxicam' })).toBeNull();
+  it('warns that the group rule for the route stays hidden when the species keeps another route', () => {
+    expect(deleteImpact({ rule: hawkPO, rules: [groupPO, hawkPO, hawkIM], species, medName: 'Meloxicam' }))
+      .toBe('Red-tailed Hawk will have no PO rule for Meloxicam. The Raptor PO rule stays hidden while it has its own IM rule.');
+  });
+
+  it('adds nothing when the species keeps another route and the group has no rule for this one', () => {
+    expect(deleteImpact({ rule: hawkPO, rules: [groupSC, hawkPO, hawkIM], species, medName: 'Meloxicam' })).toBeNull();
   });
 
   it('counts the species a group rule reaches', () => {

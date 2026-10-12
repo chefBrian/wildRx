@@ -17,9 +17,16 @@ export function deleteImpact(input: {
   if (rule.target.type === 'species') {
     const sp = species.find(s => s.id === rule.target.value);
     if (!sp) return null;
-    const keepsOwn = remaining.some(r => r.medicationId === rule.medicationId
+    const own = remaining.filter(r => r.medicationId === rule.medicationId
       && r.target.type === 'species' && r.target.value === sp.id);
-    if (keepsOwn) return null;
+    if (own.length > 0) {
+      // Shadowing is per med: the species' other routes keep the group's rule for this route hidden.
+      const hiddenForRoute = remaining.some(r => r.medicationId === rule.medicationId
+        && r.target.type === 'group' && r.target.value === sp.group && r.route === rule.route);
+      if (!hiddenForRoute) return null;
+      return `${sp.commonName} will have no ${rule.route} rule for ${medName}. `
+        + `The ${formatGroup(sp.group)} ${rule.route} rule stays hidden while it has its own ${joinRoutes(own)} ${plural('rule', own.length)}.`;
+    }
     const after = resolveRules({ rules: remaining, species: sp, medicationId: rule.medicationId }).matched;
     if (after.length === 0) return `${sp.commonName} will have no rule for ${medName}.`;
     return `${sp.commonName} will fall back to the ${formatGroup(sp.group)} ${joinRoutes(after)} ${plural('rule', after.length)} for ${medName}.`;
