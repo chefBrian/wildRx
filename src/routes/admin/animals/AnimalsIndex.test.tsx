@@ -7,7 +7,7 @@ import * as repos from '../../../firebase/repos';
 import type { Species } from '../../../domain/types';
 
 vi.mock('../../../firebase/repos', () => ({
-  listMedications: vi.fn(), listSpecies: vi.fn(), listAllDosingRules: vi.fn(), upsertSpecies: vi.fn(),
+  listMedications: vi.fn(), listSpecies: vi.fn(), listAllDosingRules: vi.fn(), upsertSpecies: vi.fn(), createSpecies: vi.fn(),
 }));
 
 const sp = (id: string, commonName: string, group: Species['group']): Species => ({
@@ -21,6 +21,7 @@ beforeEach(() => {
     sp('rth', 'Red-tailed Hawk', 'raptor'), sp('bo', 'Barred Owl', 'raptor'), sp('robin', 'American Robin', 'songbird'),
   ]);
   vi.mocked(repos.upsertSpecies).mockReset().mockResolvedValue(undefined);
+  vi.mocked(repos.createSpecies).mockReset().mockResolvedValue(undefined);
 });
 
 function renderIndex() {

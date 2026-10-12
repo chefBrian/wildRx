@@ -67,17 +67,26 @@ async function main() {
 
   const stamp = new Date().toISOString().replace(/:/g, '-');
   await writeBackup(medDocs, stamp);
-  for (const { doc, plan } of changes) {
-    // Precondition: fails if the doc changed since it was read.
-    await doc.ref.update(
-      { concentrations: plan.data.concentrations, schemaVersion: 2 },
-      { lastUpdateTime: doc.updateTime },
-    );
-    log(`wrote ${doc.id}`);
-  }
+  let current = '(before first write)';
   const reportPath = join(BACKUP_DIR, `concentration-routes-${stamp}.report.txt`);
-  await writeFile(reportPath, out.join('\n') + '\n');
-  console.log(`\nReport saved: ${reportPath}`);
+  try {
+    for (const { doc, plan } of changes) {
+      current = doc.id;
+      // Precondition: fails if the doc changed since it was read.
+      await doc.ref.update(
+        { concentrations: plan.data.concentrations, schemaVersion: 2 },
+        { lastUpdateTime: doc.updateTime },
+      );
+      log(`wrote ${doc.id}`);
+    }
+  } catch (err) {
+    log(`\nRUN FAILED at ${current}: ${err.message ?? err}`);
+    throw err;
+  } finally {
+    // Always keep the log of what was written, even on a mid-run failure.
+    await writeFile(reportPath, out.join('\n') + '\n');
+    console.log(`\nReport saved: ${reportPath}`);
+  }
   process.exit(0);
 }
 

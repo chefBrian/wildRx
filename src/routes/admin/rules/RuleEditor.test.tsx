@@ -66,6 +66,15 @@ describe('RuleEditor - fields (moved from RulesTab)', () => {
     expect(screen.getByText(/^0\.5 kg: 750 IU = 0\.015 ml @ 50,000 IU\/ml$/)).toBeInTheDocument();
   });
 
+  it('tags a preview line whose only the low end is unmeasurable', () => {
+    const rule = { ...existingRule, dosePerKg: { min: 500, typical: 1500, max: 2000 } };
+    renderEditor({ rule, allRules: [rule] });
+    // 0.5 kg: min 250 IU = 0.005 ml, typical 750 IU = 0.015 ml
+    expect(screen.getByText(/^0\.5 kg: 750 IU = 0\.015 ml @ 50,000 IU\/ml \(low end too small to measure\)$/)).toBeInTheDocument();
+    // 0.3 kg: typical 0.009 ml is itself too small
+    expect(screen.getByText(/^0\.3 kg: 450 IU = 0\.009 ml @ 50,000 IU\/ml \(too small to measure\)$/)).toBeInTheDocument();
+  });
+
   it('disables Save when typical is blank', async () => {
     const user = userEvent.setup();
     renderEditor();
@@ -165,6 +174,16 @@ describe('RuleEditor - ids and targets', () => {
     renderEditor({ meds: [imOnly] });
     await user.selectOptions(screen.getByLabelText('Route'), 'SC');
     expect(screen.getByText(/^0\.3 kg: 450 IU = not for SC @ 50,000 IU\/ml$/)).toBeInTheDocument();
+  });
+
+  it('says capped in the preview even when every bottle is blocked for the route', async () => {
+    const user = userEvent.setup();
+    const imOnly: Medication = { ...vita, concentrations: [{ id: 'c1', value: 50000, form: 'injectable', routes: ['IM'] }] };
+    renderEditor({ meds: [imOnly] });
+    await user.selectOptions(screen.getByLabelText('Route'), 'SC');
+    await user.type(screen.getByLabelText('Max single dose (IU, blank = none)'), '400');
+    // 0.3 kg x 1500 = 450 IU, capped to 400
+    expect(screen.getByText(/^0\.3 kg: 400 IU = not for SC @ 50,000 IU\/ml \(capped\)$/)).toBeInTheDocument();
   });
 
   it('re-keys a legacy id on save', async () => {

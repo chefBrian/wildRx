@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { upsertSpecies } from '../../../firebase/repos';
+import { createSpecies, upsertSpecies, SpeciesExistsError } from '../../../firebase/repos';
 import { slugify } from '../../../domain/slug';
 import { groupChangeImpact } from '../../../domain/ruleImpact';
 import { actionFailed } from '../actionFailed';
@@ -41,10 +41,13 @@ export function SpeciesEditor({ species, allSpecies, meds, rules, onSaved, onCan
     setSaving(true);
     setSaveError(null);
     try {
-      await upsertSpecies(toSave);
+      // A new species must not overwrite one another admin just created at the same slug.
+      await (isNew ? createSpecies(toSave) : upsertSpecies(toSave));
     } catch (err) {
       setSaving(false);
-      setSaveError(actionFailed('Save', err));
+      setSaveError(err instanceof SpeciesExistsError
+        ? 'A species with this name already exists.'
+        : actionFailed('Save', err));
       return;
     }
     onSaved(toSave);

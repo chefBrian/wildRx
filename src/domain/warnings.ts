@@ -40,6 +40,12 @@ export function doseWarnings(args: {
       title: 'Below measurable volume',
       body: 'Under 0.01 ml. Dilute before dosing - confirm the dilution with the attending vet.',
     });
+  } else if (result.volumeMl && result.volumeMl.min < MIN_MEASURABLE_ML) {
+    warnings.push({
+      kind: 'unmeasurable',
+      title: 'Below measurable volume',
+      body: 'The low end of the range is under 0.01 ml. Dilute before dosing - confirm the dilution with the attending vet.',
+    });
   }
   return warnings;
 }

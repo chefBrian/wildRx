@@ -196,4 +196,22 @@ describe('MedList', () => {
     expect(screen.getByText('No bottle on file can be given by PO. Ask a vet.')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /mg\/ml/ })).not.toBeInTheDocument();
   });
+
+  it('keeps bottles selectable when they cover only some of the routes in effect', async () => {
+    vi.mocked(repos.listMedications).mockResolvedValue([
+      { id: 'iver', name: 'Ivermectin', doseUnit: 'mg', concentrations: [
+        { id: 'im', value: 10, form: 'injectable', routes: ['IM'] },
+        { id: 'po', value: 1, form: 'oral', routes: ['PO'] },
+        { id: 'sc', value: 5, form: 'injectable', routes: ['SC'] },
+      ] },
+    ]);
+    vi.mocked(repos.listAllDosingRules).mockResolvedValue([groupRule('iver'), { ...groupRule('iver'), id: 'iver__group-raptor__IM', route: 'IM' }]);
+    const user = userEvent.setup();
+    renderAt('/dose/rth/1.2');
+    await user.click(await screen.findByRole('button', { name: /ivermectin/i }));
+    expect(screen.getByRole('button', { name: /10 mg\/ml/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^1 mg\/ml/ })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^5 mg\/ml/ })).not.toBeInTheDocument();
+    expect(screen.getByText('Not for PO, IM')).toBeInTheDocument();
+  });
 });

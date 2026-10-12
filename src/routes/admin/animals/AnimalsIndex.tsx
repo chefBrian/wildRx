@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAdminData } from './useAdminData';
-import { LoadProblem } from './LoadProblem';
+import { LoadProblem, RefreshProblem } from './LoadProblem';
 import { SpeciesEditor } from './SpeciesEditor';
 import { GROUPS, formatGroup, type Species } from '../../../domain/types';
 
@@ -10,7 +10,7 @@ const blankSpecies: Species = {
 };
 
 export function AnimalsIndex() {
-  const { data, error, reload } = useAdminData();
+  const { data, error, refreshError, reload } = useAdminData();
   const [query, setQuery] = useState('');
   const [adding, setAdding] = useState(false);
   const nav = useNavigate();
@@ -30,6 +30,7 @@ export function AnimalsIndex() {
 
   return (
     <div className="space-y-6">
+      {refreshError && <RefreshProblem onRetry={reload} />}
       <div className="flex items-center gap-3">
         <input
           type="search"

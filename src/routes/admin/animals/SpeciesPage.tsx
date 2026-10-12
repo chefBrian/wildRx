@@ -1,14 +1,14 @@
 import { useState, type ReactNode } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useAdminData, type AdminData } from './useAdminData';
-import { LoadProblem } from './LoadProblem';
+import { LoadProblem, RefreshProblem } from './LoadProblem';
 import { ActionButton } from './ActionButton';
 import { SpeciesEditor } from './SpeciesEditor';
 import { RuleEditor } from '../rules/RuleEditor';
 import { blankRule, copyToSpecies } from '../rules/ruleDrafts';
 import { RuleSummary } from '../../../components/RuleSummary';
 import { ConfirmDialog } from '../../../components/ConfirmDialog';
-import { createDosingRules, deleteDosingRule, deleteSpecies, RuleExistsError } from '../../../firebase/repos';
+import { createDosingRules, deleteDosingRule, deleteSpecies, listDosingRulesForSpecies, RuleExistsError } from '../../../firebase/repos';
 import { actionFailed } from '../actionFailed';
 import { medsForSpecies } from '../../../domain/medsForSpecies';
 import { groupRuleReach, shadowedGroupRules } from '../../../domain/shadowing';
@@ -19,7 +19,7 @@ import { formatGroup, type DosingRule, type Medication, type RuleTarget, type Sp
 
 export function SpeciesPage() {
   const { speciesId = '' } = useParams();
-  const { data, error, reload } = useAdminData();
+  const { data, error, refreshError, reload } = useAdminData();
   if (error) return <LoadProblem error={error} onRetry={reload} />;
   if (!data) return <div className="text-[14px] italic text-ink2">Loading…</div>;
   const species = data.species.find(s => s.id === speciesId);
@@ -31,7 +31,12 @@ export function SpeciesPage() {
     );
   }
   // Keyed so open editors and dialogs never carry over to another species.
-  return <SpeciesPageView key={species.id} species={species} data={data} reload={reload} />;
+  return (
+    <div className="space-y-6">
+      {refreshError && <RefreshProblem onRetry={reload} />}
+      <SpeciesPageView key={species.id} species={species} data={data} reload={reload} />
+    </div>
+  );
 }
 
 interface EditorState {
@@ -62,6 +67,8 @@ function SpeciesPageView({ species, data, reload }: { species: Species; data: Ad
   const { withRules, withoutRules } = medsForSpecies({ meds: data.meds, rules: data.rules, species });
   const ownRules = data.rules.filter(r => r.target.type === 'species' && r.target.value === species.id);
   const medName = (id: string) => data.meds.find(m => m.id === id)?.name ?? id;
+  // Left behind by a deleted medication; they block deleting this species.
+  const orphanRules = ownRules.filter(r => !data.meds.some(m => m.id === r.medicationId));
 
   function openEditor(anchor: string, rule: DosingRule, targetChoices: RuleTarget[]) {
     setEditor({ anchor, rule, targetChoices });
@@ -123,12 +130,23 @@ function SpeciesPageView({ species, data, reload }: { species: Species; data: Ad
     setConfirmSpeciesDelete(false);
     setNotice(null);
     try {
+      // The page's rules may be stale (another tab added one): check again before deleting.
+      const fresh = await listDosingRulesForSpecies(species.id);
+      if (fresh.length > 0) {
+        setNotice(ownRulesGuard(fresh));
+        reload();
+        return;
+      }
       await deleteSpecies(species.id);
     } catch (err) {
       setNotice(actionFailed('Delete', err));
       return;
     }
     nav('/admin');
+  }
+
+  function ownRulesGuard(rules: DosingRule[]) {
+    return `Delete the ${rules.length} species rule${rules.length === 1 ? '' : 's'} for ${species.commonName} first: ${rules.map(r => `${medName(r.medicationId)} ${r.route}`).join(', ')}.`;
   }
 
   const deleteMessage = pendingDelete
@@ -167,10 +185,7 @@ function SpeciesPageView({ species, data, reload }: { species: Species; data: Ad
               <ActionButton danger disabled={ownRules.length > 0} onClick={() => setConfirmSpeciesDelete(true)}>Delete species</ActionButton>
             </div>
             {ownRules.length > 0 && (
-              <p className="text-[12px] italic text-ink2">
-                Delete the {ownRules.length} species rule{ownRules.length === 1 ? '' : 's'} for {species.commonName} first:{' '}
-                {ownRules.map(r => `${medName(r.medicationId)} ${r.route}`).join(', ')}.
-              </p>
+              <p className="text-[12px] italic text-ink2">{ownRulesGuard(ownRules)}</p>
             )}
           </div>
         )}
@@ -233,6 +248,23 @@ function SpeciesPageView({ species, data, reload }: { species: Species; data: Ad
           );
         })}
       </section>
+
+      {orphanRules.length > 0 && (
+        <section className="space-y-3">
+          <h3 className="text-[11px] uppercase tracking-[0.14em] text-ink2">Rules for deleted medications</h3>
+          <p className="text-[12px] italic text-ink2">These rules point at a medication that no longer exists. They never show in the calculator.</p>
+          <ul className="space-y-2">
+            {orphanRules.map(r => (
+              <li key={r.id} className="flex items-center justify-between gap-4 bg-surface border border-taupe rounded-md px-4 py-2">
+                <span className="text-[14px] text-ink">
+                  <span className="font-mono">{r.medicationId}</span> - {r.route}
+                </span>
+                <ActionButton danger onClick={() => setPendingDelete(r)}>Delete</ActionButton>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {/* No rule */}
       <section className="space-y-3">

@@ -70,17 +70,26 @@ async function main() {
   const stamp = new Date().toISOString().replace(/:/g, '-');
   await writeBackup(ruleDocs, stamp);
   const byId = new Map(ruleDocs.map(d => [d.id, d]));
-  for (const { oldId, newId } of plan.rekeys) {
-    // create() fails if newId appeared since the plan was made; the batch is atomic.
-    const batch = db.batch();
-    batch.create(db.collection('dosingRules').doc(newId), byId.get(oldId).data());
-    batch.delete(byId.get(oldId).ref);
-    await batch.commit();
-    log(`wrote ${newId} (deleted ${oldId})`);
-  }
+  let current = '(before first write)';
   const reportPath = join(BACKUP_DIR, `rule-ids-${stamp}.report.txt`);
-  await writeFile(reportPath, out.join('\n') + '\n');
-  console.log(`\nReport saved: ${reportPath}`);
+  try {
+    for (const { oldId, newId } of plan.rekeys) {
+      current = oldId;
+      // create() fails if newId appeared since the plan was made; the batch is atomic.
+      const batch = db.batch();
+      batch.create(db.collection('dosingRules').doc(newId), byId.get(oldId).data());
+      batch.delete(byId.get(oldId).ref);
+      await batch.commit();
+      log(`wrote ${newId} (deleted ${oldId})`);
+    }
+  } catch (err) {
+    log(`\nRUN FAILED at ${current}: ${err.message ?? err}`);
+    throw err;
+  } finally {
+    // Always keep the log of what was written, even on a mid-run failure.
+    await writeFile(reportPath, out.join('\n') + '\n');
+    console.log(`\nReport saved: ${reportPath}`);
+  }
   process.exit(0);
 }
 

@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import {
-  listMedications, listDosingRulesForMed, upsertMedication, deleteMedication,
+  listMedications, listDosingRulesForMed, upsertMedication, deleteMedicationWithRules,
 } from '../../firebase/repos';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { NumberField } from '../../components/NumberField';
 import { formatUnitBadge } from '../../domain/format';
 import { allowedRoutes, DEFAULT_ROUTES, formatRoutes, normalizeRoutes } from '../../domain/concentrations';
+import { actionFailed } from './actionFailed';
 import { ROUTES } from '../../domain/doseRoutes';
 import {
   validateMedication, toMedication,
@@ -38,7 +39,8 @@ export function MedsTab() {
   // Bottle ids whose routes were chosen (or loaded) - form changes don't reset those.
   const [touched, setTouched] = useState<Set<string>>(new Set());
   const countingFor = useRef<string | null>(null);
-  const [pendingDelete, setPendingDelete] = useState<Medication | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<{ med: Medication; ruleCount: number } | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   async function reload() {
     setMeds(await listMedications());
@@ -81,10 +83,28 @@ export function MedsTab() {
     await reload();
   }
 
+  // The confirm needs the rule count; if it can't be read, don't offer the delete.
+  async function askDelete(m: Medication) {
+    setDeleteError(null);
+    try {
+      const rs = await listDosingRulesForMed(m.id);
+      setPendingDelete({ med: m, ruleCount: rs.length });
+    } catch {
+      setDeleteError(`Couldn't check this medication's rules, so it can't be deleted right now. Try again.`);
+    }
+  }
+
   async function confirmDelete() {
     if (!pendingDelete) return;
-    await deleteMedication(pendingDelete.id);
+    const { med } = pendingDelete;
     setPendingDelete(null);
+    setDeleteError(null);
+    try {
+      await deleteMedicationWithRules(med.id);
+    } catch (err) {
+      setDeleteError(actionFailed('Delete', err));
+      return;
+    }
     await reload();
   }
 
@@ -110,10 +130,17 @@ export function MedsTab() {
   function setUnit(unit: DoseUnit | null) {
     if (!editing) return;
     // ml meds have no concentrations; clear them so nothing hidden blocks Save.
+    // mg <-> IU would silently relabel 5 mg/ml as 5 IU/ml, so strengths are re-entered.
+    // Going via "Choose unit" counts too, so strengths are cleared whenever the unit they were entered under is left.
+    const swapped = isStrengthUnit(editing.doseUnit) && editing.doseUnit !== unit;
     setEditing({
       ...editing,
       doseUnit: unit,
-      concentrations: unit === 'ml' ? [] : editing.concentrations,
+      concentrations: unit === 'ml'
+        ? []
+        : swapped
+          ? editing.concentrations.map(c => ({ ...c, value: NaN }))
+          : editing.concentrations,
     });
   }
 
@@ -335,6 +362,8 @@ export function MedsTab() {
         </div>
       )}
 
+      {deleteError && <div role="alert" className="text-[13px] text-clay-700">{deleteError}</div>}
+
       <ul className="space-y-2">
         {meds.map(m => {
           const isEditingThis = editing !== null && editing.id === m.id;
@@ -376,7 +405,7 @@ export function MedsTab() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setPendingDelete(m)}
+                  onClick={() => askDelete(m)}
                   className="min-h-[44px] inline-flex items-center text-[12px] uppercase tracking-[0.1em] text-clay-700 underline underline-offset-4 decoration-1"
                 >
                   Delete
@@ -390,14 +419,22 @@ export function MedsTab() {
       <ConfirmDialog
         open={pendingDelete !== null}
         title="Delete this medication?"
-        message={pendingDelete ? `${pendingDelete.name} and any associated dosing rules will need to be cleaned up. This cannot be undone.` : undefined}
+        message={pendingDelete ? deleteMessage(pendingDelete) : undefined}
         confirmLabel="Delete"
         destructive
         onConfirm={confirmDelete}
-        onCancel={() => setPendingDelete(null)}
+        onCancel={() => { setPendingDelete(null); setDeleteError(null); }}
       />
     </div>
   );
+}
+
+function deleteMessage({ med, ruleCount }: { med: Medication; ruleCount: number }): string {
+  return `${med.name} and its ${ruleCount} dosing ${ruleCount === 1 ? 'rule' : 'rules'} will be deleted. This cannot be undone.`;
+}
+
+function isStrengthUnit(u: DoseUnit | null): boolean {
+  return u === 'mg' || u === 'IU';
 }
 
 /** Oral/topical bottles ticked for an injection route - likely a mistake worth a second look. */

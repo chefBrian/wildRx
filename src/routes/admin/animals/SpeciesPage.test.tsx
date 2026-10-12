@@ -17,7 +17,8 @@ vi.mock('../../../firebase/repos', () => {
     RuleExistsError,
     listMedications: vi.fn(), listSpecies: vi.fn(), listAllDosingRules: vi.fn(),
     createDosingRule: vi.fn(), createDosingRules: vi.fn(), upsertDosingRule: vi.fn(),
-    rekeyDosingRule: vi.fn(), deleteDosingRule: vi.fn(), deleteSpecies: vi.fn(), upsertSpecies: vi.fn(),
+    rekeyDosingRule: vi.fn(), deleteDosingRule: vi.fn(), deleteSpecies: vi.fn(), upsertSpecies: vi.fn(), createSpecies: vi.fn(),
+    listDosingRulesForSpecies: vi.fn(),
   };
 });
 
@@ -46,6 +47,7 @@ beforeEach(() => {
   vi.mocked(repos.createDosingRules).mockReset().mockResolvedValue(undefined);
   vi.mocked(repos.deleteDosingRule).mockReset().mockResolvedValue(undefined);
   vi.mocked(repos.deleteSpecies).mockReset().mockResolvedValue(undefined);
+  vi.mocked(repos.listDosingRulesForSpecies).mockReset().mockResolvedValue([]);
 });
 
 function renderPage(id = 'rth') {
@@ -192,5 +194,61 @@ describe('SpeciesPage', () => {
     await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: /^delete$/i }));
     expect(await screen.findByText('Delete failed: offline')).toBeInTheDocument();
     expect(screen.queryByText('ADMIN HOME')).not.toBeInTheDocument();
+  });
+
+  it('re-checks the species rules on confirm and refuses when one appeared since the page loaded', async () => {
+    vi.mocked(repos.listDosingRulesForSpecies).mockResolvedValue([rule('baytril', { type: 'species', value: 'bo' }, 'PO')]);
+    const user = userEvent.setup();
+    renderPage('bo');
+    await user.click(await screen.findByRole('button', { name: /delete species/i }));
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: /^delete$/i }));
+    expect(await screen.findByText(/delete the 1 species rule for barred owl first: baytril po/i)).toBeInTheDocument();
+    expect(repos.listDosingRulesForSpecies).toHaveBeenCalledWith('bo');
+    expect(repos.deleteSpecies).not.toHaveBeenCalled();
+    expect(screen.queryByText('ADMIN HOME')).not.toBeInTheDocument();
+    await waitFor(() => expect(repos.listAllDosingRules).toHaveBeenCalledTimes(2)); // page data reloaded
+  });
+
+  it('does not delete when the fresh rule check fails', async () => {
+    vi.mocked(repos.listDosingRulesForSpecies).mockRejectedValue(new Error('offline'));
+    const user = userEvent.setup();
+    renderPage('bo');
+    await user.click(await screen.findByRole('button', { name: /delete species/i }));
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: /^delete$/i }));
+    expect(await screen.findByText('Delete failed: offline')).toBeInTheDocument();
+    expect(repos.deleteSpecies).not.toHaveBeenCalled();
+  });
+
+  it('lists rules whose medication was deleted and deletes one', async () => {
+    const orphan = rule('gone-med', { type: 'species', value: 'bo' }, 'IM');
+    vi.mocked(repos.listAllDosingRules).mockResolvedValue([...RULES, orphan]);
+    const user = userEvent.setup();
+    renderPage('bo');
+    const section = (await screen.findByRole('heading', { name: 'Rules for deleted medications' })).closest('section')!;
+    expect(within(section).getByText(/gone-med/)).toBeInTheDocument();
+    expect(within(section).getByText(/IM/)).toBeInTheDocument();
+    await user.click(within(section).getByRole('button', { name: /delete/i }));
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: /^delete$/i }));
+    expect(repos.deleteDosingRule).toHaveBeenCalledWith(orphan.id);
+  });
+
+  it('shows no deleted-medication section when every rule has its medication', async () => {
+    renderPage();
+    await screen.findByTestId('rule-melox__species-rth__PO');
+    expect(screen.queryByRole('heading', { name: 'Rules for deleted medications' })).not.toBeInTheDocument();
+  });
+
+  it('keeps the page and offers Try again when a refresh after a change fails', async () => {
+    vi.mocked(repos.listAllDosingRules).mockResolvedValueOnce(RULES).mockRejectedValueOnce(new Error('offline'));
+    const user = userEvent.setup();
+    renderPage();
+    const own = await screen.findByTestId('rule-melox__species-rth__PO');
+    await user.click(within(own).getByRole('button', { name: /delete/i }));
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: /^delete$/i }));
+    expect(await screen.findByText(/couldn't refresh\. the page may be out of date\./i)).toBeInTheDocument();
+    expect(screen.getByTestId('rule-baytril__group-raptor__PO')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /try again/i }));
+    await waitFor(() => expect(screen.queryByText(/couldn't refresh/i)).not.toBeInTheDocument());
+    expect(screen.getByTestId('rule-baytril__group-raptor__PO')).toBeInTheDocument();
   });
 });

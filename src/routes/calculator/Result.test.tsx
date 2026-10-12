@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -44,6 +44,10 @@ function renderAt(url: string) {
       </Routes>
     </MemoryRouter>
   );
+}
+
+function volumeOutput() {
+  return within(screen.getByLabelText('Volume')).getByRole('status').textContent;
 }
 
 describe('Result', () => {
@@ -138,7 +142,7 @@ describe('Result', () => {
     await waitFor(() => expect(screen.getByText('2,000 IU')).toBeInTheDocument());
     expect(screen.getByText('50,000 IU/ml · injectable')).toBeInTheDocument();
     expect(screen.getAllByText(/IU\/kg/).length).toBeGreaterThan(0);
-    expect(screen.getByLabelText('Volume')).toHaveTextContent('0.04');
+    expect(volumeOutput()).toBe('0.04ml');
   });
 
   it('shows an ml med by volume with its product and rate', async () => {
@@ -151,7 +155,7 @@ describe('Result', () => {
       { ...baseRule, dosePerKg: { min: 1, typical: 1, max: 2 } },
     ]);
     renderAt('/dose/s1/0.5/m1');
-    await waitFor(() => expect(screen.getByLabelText('Volume')).toHaveTextContent('0.5'));
+    await waitFor(() => expect(volumeOutput()).toBe('0.5ml'));
     expect(screen.getByText('Pepto-Bismol Original (17.5 mg/ml)')).toBeInTheDocument();
     expect(screen.getByText('1 ml/kg')).toBeInTheDocument();
   });
@@ -214,6 +218,38 @@ describe('Result', () => {
     const text = writeText.mock.calls[0][0] as string;
     expect(text).toMatch(/^Volume: 0\.5 ml {2}\(range 0\.5[–-]0\.8 ml\) @ /m);
     expect(text).toMatch(/^⚠ /m);
+  });
+
+  it('copies the full summary for a normal mg result', async () => {
+    const { listAllDosingRules } = await import('../../firebase/repos');
+    vi.mocked(listAllDosingRules).mockResolvedValueOnce([{ ...baseRule, durationDays: { min: 5, max: 7 } }]);
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+    renderAt('/dose/s1/1/m1');
+    await waitFor(() => screen.getByLabelText('Volume'));
+    fireEvent.click(screen.getByRole('button', { name: /copy summary/i }));
+    await waitFor(() => expect(writeText).toHaveBeenCalled());
+    expect(writeText.mock.calls[0][0]).toBe([
+      'Meloxicam',
+      'Species: Red-tailed Hawk - Buteo jamaicensis',
+      'Weight: 1 kg',
+      'Dose: 0.2 mg  (range 0.1–0.5 mg)',
+      'Rate: 0.2 mg/kg × 1 kg',
+      'Route: PO (By mouth)',
+      'Frequency: q24h - Once a day',
+      'Duration: 5 to 7 days',
+      'Volume: 0.133 ml  (range 0.0667–0.333 ml) @ 1.5 mg/ml · oral',
+      '- Guidance only; cross-check with attending vet.',
+    ].join('\n'));
+  });
+
+  it('shows the capped wording in the math line and computes volume from the capped dose', async () => {
+    const { listAllDosingRules } = await import('../../firebase/repos');
+    vi.mocked(listAllDosingRules).mockResolvedValueOnce([{ ...baseRule, maxSingleDose: 0.15 }]);
+    renderAt('/dose/s1/1/m1');
+    const capped = await screen.findByText(/→ capped at 0\.15 mg/);
+    expect(capped.parentElement?.textContent).toBe('0.2 mg/kg×1 kg=0.2 mg→ capped at 0.15 mg÷1.5 mg/ml=0.1 ml');
+    expect(volumeOutput()).toBe('0.1ml');
   });
 
   it('links back to the med list and the patient', async () => {

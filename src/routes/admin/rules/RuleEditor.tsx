@@ -6,7 +6,7 @@ import { calculateDose, type DoseResult } from '../../../domain/dose';
 import { formatNumber } from '../../../domain/format';
 import { normalizeRuleRange, validateRule } from '../../../domain/validate';
 import { targetWeightRange } from '../../../domain/targetWeights';
-import { doseWarnings, type DoseWarning } from '../../../domain/warnings';
+import { doseWarnings, MIN_MEASURABLE_ML, type DoseWarning } from '../../../domain/warnings';
 import { FREQUENCY_OPTIONS, isCanonicalFrequency } from '../../../domain/frequency';
 import { bottleAllowsRoute } from '../../../domain/concentrations';
 import { ROUTES } from '../../../domain/doseRoutes';
@@ -360,11 +360,17 @@ function previewLine(rule: DosingRule, unit: DoseUnit, concentrations: Concentra
     const r = calculateDose({ weightKg: kg, rule, doseUnit: unit, concentration: c });
     return `${formatNumber(r.volumeMl?.typical ?? NaN)} ml @ ${formatNumber(c.value)} ${unit}/ml${tagsFor(r, rule, kg)}`;
   });
-  return `${head}${formatNumber(base.dose.typical)} ${unit} = ${volumes.join(', ')}`;
+  // With every bottle blocked no per-bottle tags render, so the cap tag follows the entries.
+  const allBlocked = concentrations.every(c => !bottleAllowsRoute(c, rule.route));
+  const blockedTags = allBlocked ? tagsFor(base, rule, kg) : '';
+  return `${head}${formatNumber(base.dose.typical)} ${unit} = ${volumes.join(', ')}${blockedTags}`;
 }
 
 function tagsFor(result: DoseResult, rule: DosingRule, kg: number): string {
-  const tags = doseWarnings({ result, rule, weightKg: kg }).map(w => PREVIEW_TAGS[w.kind]);
+  const tags = doseWarnings({ result, rule, weightKg: kg }).map(w =>
+    w.kind === 'unmeasurable' && result.volumeMl && result.volumeMl.typical >= MIN_MEASURABLE_ML
+      ? 'low end too small to measure'
+      : PREVIEW_TAGS[w.kind]);
   return tags.length ? ` (${tags.join(', ')})` : '';
 }
 

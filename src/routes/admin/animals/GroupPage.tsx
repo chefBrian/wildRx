@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useAdminData, type AdminData } from './useAdminData';
-import { LoadProblem } from './LoadProblem';
+import { LoadProblem, RefreshProblem } from './LoadProblem';
 import { ActionButton } from './ActionButton';
 import { RuleEditor } from '../rules/RuleEditor';
 import { blankRule } from '../rules/ruleDrafts';
@@ -16,7 +16,7 @@ import { GROUPS, formatGroup, type DosingRule, type RuleTarget, type TaxonomicGr
 
 export function GroupPage() {
   const { group = '' } = useParams();
-  const { data, error, reload } = useAdminData();
+  const { data, error, refreshError, reload } = useAdminData();
   if (!GROUPS.includes(group as TaxonomicGroup)) {
     return (
       <p className="text-[14px] text-ink2">
@@ -26,7 +26,12 @@ export function GroupPage() {
   }
   if (error) return <LoadProblem error={error} onRetry={reload} />;
   if (!data) return <div className="text-[14px] italic text-ink2">Loading…</div>;
-  return <GroupPageView key={group} group={group as TaxonomicGroup} data={data} reload={reload} />;
+  return (
+    <div className="space-y-6">
+      {refreshError && <RefreshProblem onRetry={reload} />}
+      <GroupPageView key={group} group={group as TaxonomicGroup} data={data} reload={reload} />
+    </div>
+  );
 }
 
 function GroupPageView({ group, data, reload }: { group: TaxonomicGroup; data: AdminData; reload: () => void }) {

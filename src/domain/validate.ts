@@ -16,7 +16,7 @@ export type MedicationDraft = Omit<Medication, 'doseUnit' | 'concentrations'> & 
 // lives in the numeric field so the math and the displayed text can't disagree.
 // (?![a-z]) instead of \b so "1%" matches. Keep in sync with NOTE_STRENGTH in
 // scripts/lib/migrateDoseUnits.mjs - a test there pins the two together.
-export const STRENGTH_IN_TEXT = /\d+(\.\d+)?\s*(mg|mcg|µg|g|ml|iu|units?|%)(?![a-z])/i;
+export const STRENGTH_IN_TEXT = /\d+(\.\d+)?\s*(mg|mgs|milligrams?|mcgs?|micrograms?|[uµμ]g|grams?|g|ml|iu|units?|%)(?![a-z])/i;
 
 export function validateMedication(med: MedicationDraft): FieldErrors {
   const errors: FieldErrors = {};

@@ -1,5 +1,5 @@
 import {
-  collection, deleteDoc, doc, getDocs, query, runTransaction, setDoc, where,
+  collection, deleteDoc, doc, getDocs, query, runTransaction, setDoc, where, writeBatch,
   type QueryDocumentSnapshot,
 } from 'firebase/firestore';
 import { db } from './client';
@@ -37,6 +37,17 @@ export async function listDosingRulesForMed(medId: string): Promise<DosingRule[]
   return snap.docs.map(toRule);
 }
 
+/** A species' own rules, fetched fresh. The species delete guard uses it so a rule added in another tab is seen. */
+export async function listDosingRulesForSpecies(speciesId: string): Promise<DosingRule[]> {
+  const q = query(
+    collection(db, 'dosingRules'),
+    where('target.type', '==', 'species'),
+    where('target.value', '==', speciesId),
+  );
+  const snap = await getDocs(q);
+  return snap.docs.map(toRule);
+}
+
 // Throw, never skip: dropping one species rule would silently surface the group rule.
 function toRule(d: QueryDocumentSnapshot): DosingRule {
   const data = d.data();
@@ -54,11 +65,41 @@ function stripId<T extends { id: string }>(o: T): Omit<T, 'id'> {
   return rest;
 }
 
-export async function deleteMedication(id: string) {
-  await deleteDoc(doc(db, 'medications', id));
+
+/**
+ * Delete a medication and every rule that points at it in one batch, so no orphan rules
+ * are left behind. Rules are looked up fresh (and deleted by ref, whatever their shape).
+ * A batch holds at most 500 writes (the largest med has ~9 rules).
+ */
+export async function deleteMedicationWithRules(id: string) {
+  const rules = await getDocs(query(collection(db, 'dosingRules'), where('medicationId', '==', id)));
+  const batch = writeBatch(db);
+  rules.docs.forEach(d => batch.delete(doc(db, 'dosingRules', d.id)));
+  batch.delete(doc(db, 'medications', id));
+  await batch.commit();
 }
+
 export async function upsertSpecies(s: Species) {
   await setDoc(doc(db, 'species', s.id), stripId(s));
+}
+
+/** A species already exists at the id a create wanted. Nothing was written. */
+export class SpeciesExistsError extends Error {
+  readonly id: string;
+  constructor(id: string) {
+    super(`A species with id ${id} already exists`);
+    this.name = 'SpeciesExistsError';
+    this.id = id;
+  }
+}
+
+/** Create a new species, refusing to overwrite one a concurrent admin just created at the same slug. */
+export async function createSpecies(s: Species) {
+  await runTransaction(db, async tx => {
+    const ref = doc(db, 'species', s.id);
+    if ((await tx.get(ref)).exists()) throw new SpeciesExistsError(s.id);
+    tx.set(ref, stripId(s));
+  });
 }
 export async function deleteSpecies(id: string) {
   await deleteDoc(doc(db, 'species', id));

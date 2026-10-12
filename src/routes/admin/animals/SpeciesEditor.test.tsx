@@ -5,7 +5,10 @@ import { SpeciesEditor } from './SpeciesEditor';
 import * as repos from '../../../firebase/repos';
 import type { DosingRule, Medication, RuleTarget, Species } from '../../../domain/types';
 
-vi.mock('../../../firebase/repos', () => ({ upsertSpecies: vi.fn() }));
+vi.mock('../../../firebase/repos', () => {
+  class SpeciesExistsError extends Error {}
+  return { upsertSpecies: vi.fn(), createSpecies: vi.fn(), SpeciesExistsError };
+});
 
 const hawk: Species = { id: 'red-tailed-hawk', commonName: 'Red-tailed Hawk', scientificName: 'Buteo jamaicensis', group: 'raptor', typicalWeightKg: { min: 0.7, max: 1.5 } };
 const blank: Species = { id: '', commonName: '', scientificName: '', group: 'raptor', typicalWeightKg: { min: 0, max: 0 } };
@@ -16,7 +19,10 @@ const rule = (medicationId: string, target: RuleTarget): DosingRule => ({
   maxSingleDose: null, contraindications: [], notes: '', updatedAt: 0, updatedBy: '',
 });
 
-beforeEach(() => vi.mocked(repos.upsertSpecies).mockReset().mockResolvedValue(undefined));
+beforeEach(() => {
+  vi.mocked(repos.upsertSpecies).mockReset().mockResolvedValue(undefined);
+  vi.mocked(repos.createSpecies).mockReset().mockResolvedValue(undefined);
+});
 
 function renderEditor(species: Species, extra: { allSpecies?: Species[]; meds?: Medication[]; rules?: DosingRule[]; onSaved?: (s: Species) => void } = {}) {
   render(
@@ -39,7 +45,8 @@ describe('SpeciesEditor', () => {
     await user.type(screen.getByLabelText('Common name'), "Cooper's Hawk");
     expect(screen.getByText('Id: cooper-s-hawk')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: /save/i }));
-    expect(repos.upsertSpecies).toHaveBeenCalledWith(expect.objectContaining({ id: 'cooper-s-hawk', commonName: "Cooper's Hawk" }));
+    expect(repos.createSpecies).toHaveBeenCalledWith(expect.objectContaining({ id: 'cooper-s-hawk', commonName: "Cooper's Hawk" }));
+    expect(repos.upsertSpecies).not.toHaveBeenCalled();
     expect(onSaved).toHaveBeenCalledWith(expect.objectContaining({ id: 'cooper-s-hawk' }));
   });
 
@@ -63,6 +70,18 @@ describe('SpeciesEditor', () => {
     await user.type(screen.getByLabelText('Common name'), 'Red-tail');
     await user.click(screen.getByRole('button', { name: /save/i }));
     expect(repos.upsertSpecies).toHaveBeenCalledWith(expect.objectContaining({ id: 'red-tailed-hawk', commonName: 'Red-tail' }));
+  });
+
+  it('says so when a concurrent create took the same slug', async () => {
+    vi.mocked(repos.createSpecies).mockRejectedValueOnce(new repos.SpeciesExistsError('wood-stork'));
+    const user = userEvent.setup();
+    const onSaved = vi.fn();
+    renderEditor(blank, { allSpecies: [], onSaved });
+    await user.type(screen.getByLabelText('Common name'), 'Wood Stork');
+    await user.click(screen.getByRole('button', { name: /save/i }));
+    expect(await screen.findByText('A species with this name already exists.')).toBeInTheDocument();
+    expect(onSaved).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: /save/i })).toBeEnabled();
   });
 
   it('warns when old rules already target the new id', async () => {

@@ -2,7 +2,7 @@
 // they can be unit tested (scripts/lib/migrateDoseUnits.test.mjs).
 
 // Keep in sync with STRENGTH_IN_TEXT in src/domain/validate.ts (a test pins this).
-export const NOTE_STRENGTH = /\d+(\.\d+)?\s*(mg|mcg|µg|g|ml|iu|units?|%)(?![a-z])/i;
+export const NOTE_STRENGTH = /\d+(\.\d+)?\s*(mg|mgs|milligrams?|mcgs?|micrograms?|[uµμ]g|grams?|g|ml|iu|units?|%)(?![a-z])/i;
 
 // Names/labels that suggest IU or ml dosing squeezed into mg. Report-only, so
 // false positives are cheap and false negatives are not.

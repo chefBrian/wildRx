@@ -57,14 +57,14 @@ describe('validateMedication', () => {
     expect(e['conc.0.form']).toBeDefined();
   });
 
-  it.each(['Baytril', 'in-house dilution', '40 SMX + 8 TMP', 'compounded - verify bottle'])(
+  it.each(['Baytril', 'in-house dilution', '40 SMX + 8 TMP', 'compounded - verify bottle', 'Metacam', '1:10 dilution in propylene glycol', 'compounded', 'Baytril (EU)'])(
     'accepts note %j', note => {
       const e = validateMedication(draft({ concentrations: [{ id: 'c1', value: 5, form: 'oral', note }] }));
       expect(e['conc.0.note']).toBeUndefined();
     },
   );
 
-  it.each(['10 mg', '50mg/ml', '1%', 'injectable 1% (Ivomec)', '5000 IU', '2 units'])(
+  it.each(['10 mg', '50mg/ml', '1%', 'injectable 1% (Ivomec)', '5000 IU', '2 units', '10 mgs', '10 milligrams', '5 ug', '5 μg', '5 µg', '5 UG', '5 mcgs', '5 micrograms', '2 grams'])(
     'rejects note %j that states a strength', note => {
       const e = validateMedication(draft({ concentrations: [{ id: 'c1', value: 5, form: 'oral', note }] }));
       expect(e['conc.0.note']).toBeDefined();

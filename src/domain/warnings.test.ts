@@ -38,4 +38,23 @@ describe('doseWarnings', () => {
     const w = warningsFor(rule(), 0.025, conc());
     expect(w.map(x => x.kind)).toContain('unmeasurable');
   });
+
+  it('warns about the low end when only the min volume is under 0.01 ml', () => {
+    // 0.07 kg: min 0.007 ml, typical 0.014 ml
+    const w = warningsFor(rule(), 0.07, conc());
+    expect(w).toHaveLength(1);
+    expect(w[0].kind).toBe('unmeasurable');
+    expect(w[0].title).toBe('Below measurable volume');
+    expect(w[0].body).toBe('The low end of the range is under 0.01 ml. Dilute before dosing - confirm the dilution with the attending vet.');
+  });
+
+  it('keeps the original body when the typical volume is under 0.01 ml', () => {
+    const w = warningsFor(rule(), 0.025, conc());
+    expect(w).toHaveLength(1);
+    expect(w[0].body).toBe('Under 0.01 ml. Dilute before dosing - confirm the dilution with the attending vet.');
+  });
+
+  it('has no unmeasurable warning when every volume is measurable', () => {
+    expect(warningsFor(rule(), 1, conc()).map(x => x.kind)).not.toContain('unmeasurable');
+  });
 });

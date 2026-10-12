@@ -31,6 +31,25 @@ describe('planMedication', () => {
     expect(p.status).toBe('skip');
   });
 
+  it('fills a bottle missing routes even when the doc is already schemaVersion 2', () => {
+    const p = planMedication('melox', med({ schemaVersion: 2, concentrations: [
+      { id: 'o', value: 1.5, form: 'oral', routes: ['PO'] },
+      { id: 'i', value: 5, form: 'injectable' },
+    ] }));
+    expect(p.status).toBe('change');
+    expect(p.data.concentrations.map(c => c.routes)).toEqual([['PO'], ['PO', 'IM', 'SC']]);
+    expect(p.bottles).toEqual([
+      'melox (Meloxicam): 1.5 mg/ml oral -> PO',
+      'melox (Meloxicam): 5 mg/ml injectable -> PO, IM, SC [default]',
+    ]);
+  });
+
+  it('still lists the bottles of a skipped doc', () => {
+    const p = planMedication('melox', med({ schemaVersion: 2, concentrations: [{ id: 'o', value: 1.5, form: 'oral', routes: ['PO'] }] }));
+    expect(p.status).toBe('skip');
+    expect(p.bottles).toEqual(['melox (Meloxicam): 1.5 mg/ml oral -> PO']);
+  });
+
   it('only sets the schema version on ml meds', () => {
     const p = planMedication('pepto', med({ name: 'Pepto', doseUnit: 'ml', concentrations: [], productDescription: 'Original' }));
     expect(p.status).toBe('change');

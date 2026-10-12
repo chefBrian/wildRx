@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { MedsTab } from './MedsTab';
@@ -8,7 +8,7 @@ vi.mock('../../firebase/repos', () => ({
   listMedications: vi.fn(),
   listDosingRulesForMed: vi.fn(),
   upsertMedication: vi.fn().mockResolvedValue(undefined),
-  deleteMedication: vi.fn().mockResolvedValue(undefined),
+  deleteMedicationWithRules: vi.fn().mockResolvedValue(undefined),
 }));
 
 const meloxicam: Medication = {
@@ -99,6 +99,31 @@ describe('MedsTab', () => {
     }));
   });
 
+  it('clears strengths when switching between mg and IU, keeping form and note', async () => {
+    const user = userEvent.setup();
+    await startNew(user);
+    await addMgConcentration(user, '5');
+    await user.type(screen.getByLabelText(/concentration 1 note/i), 'Clavamox');
+    await user.selectOptions(screen.getByLabelText(/dosed in/i), 'IU');
+    expect(screen.getByLabelText(/concentration 1 strength/i)).toHaveValue('');
+    expect(screen.getByLabelText(/concentration 1 form/i)).toHaveValue('oral');
+    expect(screen.getByLabelText(/concentration 1 note/i)).toHaveValue('Clavamox');
+    expect(screen.getByLabelText('Concentration 1 PO')).toBeChecked();
+    expect(screen.getByRole('button', { name: /save/i })).toBeDisabled();
+    await user.type(screen.getByLabelText(/concentration 1 strength/i), '5');
+    expect(screen.getByRole('button', { name: /save/i })).toBeEnabled();
+  });
+
+  it('clears strengths when switching mg -> Choose unit -> IU', async () => {
+    const user = userEvent.setup();
+    await startNew(user);
+    await addMgConcentration(user, '5');
+    await user.selectOptions(screen.getByLabelText(/dosed in/i), '');
+    await user.selectOptions(screen.getByLabelText(/dosed in/i), 'IU');
+    expect(screen.getByLabelText(/concentration 1 strength/i)).toHaveValue('');
+    expect(screen.getByRole('button', { name: /save/i })).toBeDisabled();
+  });
+
   it('locks the unit when the med has rules', async () => {
     const repos = await import('../../firebase/repos');
     vi.mocked(repos.listDosingRulesForMed).mockResolvedValue([{ id: 'r1' }, { id: 'r2' }] as DosingRule[]);
@@ -181,6 +206,23 @@ describe('MedsTab', () => {
     expect(await screen.findByText("This med has IM rules but no bottle allows IM. The calculator will show 'No bottle on file' for them.")).toBeInTheDocument();
   });
 
+  it("drops one med's orphan-route warning when another med's rules are still loading", async () => {
+    const repos = await import('../../firebase/repos');
+    const medB: Medication = { id: 'm2', name: 'Penicillin', doseUnit: 'IU', concentrations: [{ id: 'c2', value: 300000, form: 'injectable' }] };
+    vi.mocked(repos.listMedications).mockResolvedValue([meloxicam, medB]);
+    vi.mocked(repos.listDosingRulesForMed).mockImplementation(id =>
+      id === 'm1' ? Promise.resolve([{ id: 'r1', route: 'IM' }] as DosingRule[]) : new Promise(() => {}));
+    const user = userEvent.setup();
+    render(<MedsTab />);
+    await waitFor(() => screen.getByText('Penicillin'));
+    const warning = "This med has IM rules but no bottle allows IM. The calculator will show 'No bottle on file' for them.";
+    await user.click(screen.getAllByRole('button', { name: /edit/i })[0]);
+    expect(await screen.findByText(warning)).toBeInTheDocument();
+    await user.click(within(screen.getByText('Penicillin').closest('li')!).getByRole('button', { name: /edit/i }));
+    await screen.findByText(/checking rules/i);
+    expect(screen.queryByText(warning)).not.toBeInTheDocument();
+  });
+
   it('saves routes and the schema version', async () => {
     const user = userEvent.setup();
     await startNew(user);
@@ -197,6 +239,44 @@ describe('MedsTab', () => {
     render(<MedsTab />);
     await waitFor(() => screen.getByText('Meloxicam'));
     expect(screen.getByRole('link', { name: 'Fact sheet' })).toHaveAttribute('href', '/meds/m1');
+  });
+});
+
+describe('MedsTab delete', () => {
+  it('confirms with the rule count and deletes the med with its rules', async () => {
+    const repos = await import('../../firebase/repos');
+    vi.mocked(repos.listDosingRulesForMed).mockResolvedValue([{ id: 'r1' }, { id: 'r2' }] as DosingRule[]);
+    vi.mocked(repos.deleteMedicationWithRules).mockClear();
+    const user = userEvent.setup();
+    render(<MedsTab />);
+    await waitFor(() => screen.getByText('Meloxicam'));
+    await user.click(screen.getByRole('button', { name: /^delete$/i }));
+    expect(await screen.findByText('Meloxicam and its 2 dosing rules will be deleted. This cannot be undone.')).toBeInTheDocument();
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: /^delete$/i }));
+    await waitFor(() => expect(repos.deleteMedicationWithRules).toHaveBeenCalledWith('m1'));
+  });
+
+  it('says "1 dosing rule" for a single rule', async () => {
+    const repos = await import('../../firebase/repos');
+    vi.mocked(repos.listDosingRulesForMed).mockResolvedValue([{ id: 'r1' }] as DosingRule[]);
+    const user = userEvent.setup();
+    render(<MedsTab />);
+    await waitFor(() => screen.getByText('Meloxicam'));
+    await user.click(screen.getByRole('button', { name: /^delete$/i }));
+    expect(await screen.findByText('Meloxicam and its 1 dosing rule will be deleted. This cannot be undone.')).toBeInTheDocument();
+  });
+
+  it('does not allow the delete when the rule lookup fails', async () => {
+    const repos = await import('../../firebase/repos');
+    vi.mocked(repos.listDosingRulesForMed).mockRejectedValue(new Error('schema mismatch'));
+    vi.mocked(repos.deleteMedicationWithRules).mockClear();
+    const user = userEvent.setup();
+    render(<MedsTab />);
+    await waitFor(() => screen.getByText('Meloxicam'));
+    await user.click(screen.getByRole('button', { name: /^delete$/i }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(/couldn't check this medication's rules/i);
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(repos.deleteMedicationWithRules).not.toHaveBeenCalled();
   });
 });
 

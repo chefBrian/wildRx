@@ -41,3 +41,26 @@ describe('useAdminData', () => {
     await waitFor(() => expect(result.current.error).toBe('schemaMismatch'));
   });
 });
+
+describe('useAdminData - failed refresh', () => {
+  it('keeps the loaded data and flags refreshError when a reload fails, then clears it on success', async () => {
+    const { result } = renderHook(() => useAdminData());
+    await waitFor(() => expect(result.current.data).not.toBeNull());
+    vi.mocked(repos.listAllDosingRules).mockRejectedValueOnce(new Error('offline'));
+    act(() => result.current.reload());
+    await waitFor(() => expect(result.current.refreshError).toBe('error'));
+    expect(result.current.error).toBeNull();
+    expect(result.current.data?.rules.map(x => x.id)).toEqual(['a']);
+    act(() => result.current.reload());
+    await waitFor(() => expect(result.current.refreshError).toBeNull());
+    expect(result.current.data?.rules.map(x => x.id)).toEqual(['a']);
+  });
+
+  it('reports an initial failure as error with no refreshError', async () => {
+    vi.mocked(repos.listAllDosingRules).mockRejectedValueOnce(new Error('offline'));
+    const { result } = renderHook(() => useAdminData());
+    await waitFor(() => expect(result.current.error).toBe('error'));
+    expect(result.current.refreshError).toBeNull();
+    expect(result.current.data).toBeNull();
+  });
+});

@@ -9,11 +9,12 @@ vi.mock('firebase/firestore', () => ({
   setDoc: vi.fn(),
   deleteDoc: vi.fn(),
   runTransaction: vi.fn(),
+  writeBatch: vi.fn(),
 }));
 vi.mock('./client', () => ({ db: {} }));
 
 import { getDocs } from 'firebase/firestore';
-import { listMedications, listSpecies, listDosingRulesForMed, listAllDosingRules } from './repos';
+import { listMedications, listSpecies, listDosingRulesForMed, listAllDosingRules, listDosingRulesForSpecies } from './repos';
 import { SchemaMismatchError } from './schemaGuard';
 import type { QuerySnapshot } from 'firebase/firestore';
 
@@ -74,7 +75,7 @@ describe('repos', () => {
   });
 });
 
-import { upsertMedication, deleteMedication, upsertSpecies, deleteSpecies, upsertDosingRule, deleteDosingRule } from './repos';
+import { upsertMedication, upsertSpecies, deleteSpecies, upsertDosingRule, deleteDosingRule } from './repos';
 import { setDoc, doc, deleteDoc } from 'firebase/firestore';
 
 describe('repos — writes', () => {
@@ -82,10 +83,6 @@ describe('repos — writes', () => {
     await upsertMedication({ id: 'm1', name: 'Meloxicam', doseUnit: 'mg', concentrations: [] });
     expect(doc).toHaveBeenCalledWith(expect.anything(), 'medications', 'm1');
     expect(setDoc).toHaveBeenCalled();
-  });
-  it('deleteMedication deletes by id', async () => {
-    await deleteMedication('m1');
-    expect(deleteDoc).toHaveBeenCalled();
   });
   // Equivalent tests for species + dosingRules
   it('upsertSpecies works', async () => {
@@ -218,5 +215,61 @@ describe('repos - only stored rule fields are written', () => {
     for (const call of tx.set.mock.calls) {
       expect(Object.keys(call[1] as Record<string, unknown>).sort()).toEqual(STORED_KEYS);
     }
+  });
+});
+
+import { createSpecies, SpeciesExistsError, deleteMedicationWithRules } from './repos';
+import { where, writeBatch } from 'firebase/firestore';
+
+const hawk = { id: 'hawk', commonName: 'Hawk', scientificName: 'H', group: 'raptor', typicalWeightKg: { min: 1, max: 2 } } as const;
+
+describe('repos - createSpecies', () => {
+  it('writes when the slug is free', async () => {
+    const tx = useFakeTx([]);
+    await createSpecies({ ...hawk });
+    expect(tx.set).toHaveBeenCalledWith({ __doc: 'species/hawk' }, expect.not.objectContaining({ id: expect.anything() }));
+  });
+
+  it('throws SpeciesExistsError and writes nothing when the slug is taken', async () => {
+    const tx = useFakeTx(['species/hawk']);
+    await expect(createSpecies({ ...hawk })).rejects.toBeInstanceOf(SpeciesExistsError);
+    expect(tx.set).not.toHaveBeenCalled();
+  });
+});
+
+describe('repos - listDosingRulesForSpecies', () => {
+  it('queries rules targeting that species', async () => {
+    vi.mocked(getDocs).mockResolvedValueOnce(mockSnapshot([
+      { id: 'r1', medicationId: 'm1', target: { type: 'species', value: 'hawk' },
+        dosePerKg: { min: 1, max: 1, typical: 1 }, route: 'PO', frequency: 'q24h',
+        durationDays: null, maxSingleDose: null, contraindications: [], notes: '',
+        updatedAt: 0, updatedBy: '' },
+    ]));
+    const res = await listDosingRulesForSpecies('hawk');
+    expect(res.map(r => r.id)).toEqual(['r1']);
+    expect(where).toHaveBeenCalledWith('target.type', '==', 'species');
+    expect(where).toHaveBeenCalledWith('target.value', '==', 'hawk');
+  });
+});
+
+describe('repos - deleteMedicationWithRules', () => {
+  it('deletes the med and all its rules in one committed batch', async () => {
+    const batch = { delete: vi.fn(), commit: vi.fn().mockResolvedValue(undefined) };
+    vi.mocked(writeBatch).mockReturnValue(batch as never);
+    vi.mocked(getDocs).mockResolvedValueOnce(mockSnapshot([{ id: 'r1' }, { id: 'r2' }]));
+    await deleteMedicationWithRules('m1');
+    expect(where).toHaveBeenCalledWith('medicationId', '==', 'm1');
+    expect(batch.delete.mock.calls.map(c => c[0])).toEqual([
+      { __doc: 'dosingRules/r1' }, { __doc: 'dosingRules/r2' }, { __doc: 'medications/m1' },
+    ]);
+    expect(batch.commit).toHaveBeenCalledTimes(1);
+  });
+
+  it('commits nothing when the rule lookup fails', async () => {
+    const batch = { delete: vi.fn(), commit: vi.fn() };
+    vi.mocked(writeBatch).mockReturnValue(batch as never);
+    vi.mocked(getDocs).mockRejectedValueOnce(new Error('offline'));
+    await expect(deleteMedicationWithRules('m1')).rejects.toThrow('offline');
+    expect(batch.commit).not.toHaveBeenCalled();
   });
 });
